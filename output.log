@@ -1,0 +1,13 @@
+ERROR: 2021/01/24 16:16:16.197271 main.go:59: error initializating solver: error matching alphabet type: invalid algorithm type: Finite
+ERROR: 2021/01/24 16:17:51.379114 main.go:59: error initializating solver: error parsing constants: invalid constants alphabet: sdfg
+ERROR: 2021/01/24 16:18:12.287701 main.go:59: error initializating solver: error parsing equation: invalid equation: =
+ERROR: 2021/01/27 16:05:58.944604 main.go:59: error initializating solver: error parsing equation: error matching alphabet: found no match for word: =by
+ERROR: 2021/01/27 16:13:23.245240 main.go:59: error initializing solver: error parsing equation: error matching alphabet: found no match for word: yb
+ERROR: 2021/01/27 16:16:23.843878 main.go:59: error initializing solver: error parsing equation: error matching alphabet: found no match for word: y
+ERROR: 2021/01/27 16:19:17.085822 main.go:59: error initializing solver: error parsing equation: error matching alphabet: found no match for word: yb
+ERROR: 2021/01/27 16:23:02.458311 main.go:59: error initializing solver: error parsing equation: error matching alphabet: found no match for word: bcaf
+ERROR: 2021/01/27 21:02:04.655875 main.go:59: error initializing solver: error parsing equation: error matching alphabet: no match for word: dc
+ERROR: 2021/01/27 22:53:04.295434 main.go:59: error initializing solver: error parsing equation: invalid equation: x1=
+ERROR: 2021/01/31 10:30:23.995615 main.go:59: error initializing solver: error parsing equation: error matching alphabet: no match for word:  
+ERROR: 2021/02/01 08:37:37.767484 main.go:59: error initializing solver: error parsing equation: error matching alphabet: no match for word: a
+ERROR: 2021/02/01 09:01:17.802794 main.go:59: error initializing solver: error matching alphabet type: invalid algorithm type: Finite                 
