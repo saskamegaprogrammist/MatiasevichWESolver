@@ -11,3 +11,4 @@ ERROR: 2021/01/27 22:53:04.295434 main.go:59: error initializing solver: error p
 ERROR: 2021/01/31 10:30:23.995615 main.go:59: error initializing solver: error parsing equation: error matching alphabet: no match for word:  
 ERROR: 2021/02/01 08:37:37.767484 main.go:59: error initializing solver: error parsing equation: error matching alphabet: no match for word: a
 ERROR: 2021/02/01 09:01:17.802794 main.go:59: error initializing solver: error matching alphabet type: invalid algorithm type: Finite                 
+ERROR: 2021/02/03 08:50:09.553541 main.go:59: error initializing solver: error matching alphabet type: invalid algorithm type: Ð

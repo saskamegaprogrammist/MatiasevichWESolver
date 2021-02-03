@@ -121,11 +121,11 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 					return symbols, fmt.Errorf("error creating symbol: %v", err)
 				}
 				symbols = append(symbols, symb)
+				i = startIndex + len(lastMatchedWord)
+				startIndex = i
 				currentWord = ""
 				lastMatchedWord = ""
 				lastMatchType = 0
-				i = startIndex + len(lastMatchedWord)
-				startIndex = i
 				if i >= eqLen {
 					break
 				}
@@ -152,7 +152,7 @@ func (equation *Equation) CheckEquality() bool {
 			if i == equation.rightLength {
 				return false
 			}
-			if sym.Value() != equation.rightPart[i].Value() {
+			if sym != equation.rightPart[i] {
 				return false
 			} else {
 				i++
@@ -188,7 +188,7 @@ func (equation *Equation) CheckSameness(eq *Equation) bool {
 			if i == eq.leftLength {
 				return false
 			}
-			if sym.Value() != eq.leftPart[i].Value() {
+			if sym != eq.leftPart[i] {
 				return false
 			} else {
 				i++
@@ -212,7 +212,7 @@ func (equation *Equation) CheckSameness(eq *Equation) bool {
 			if i == eq.rightLength {
 				return false
 			}
-			if sym.Value() != eq.rightPart[i].Value() {
+			if sym != eq.rightPart[i] {
 				return false
 			} else {
 				i++
@@ -234,7 +234,7 @@ func (equation *Equation) SubstituteVarsWithEmpty() Equation {
 		resultEquation.rightPart = equation.rightPart
 		resultEquation.rightLength = equation.rightLength
 		for _, sym := range equation.leftPart {
-			if symbol.IsConst(sym) {
+			if symbol.IsConst(sym) || symbol.IsWord(sym) {
 				resultEquation.leftPart = append(resultEquation.leftPart, sym)
 			}
 		}
@@ -247,7 +247,7 @@ func (equation *Equation) SubstituteVarsWithEmpty() Equation {
 		resultEquation.leftPart = equation.leftPart
 		resultEquation.leftLength = equation.leftLength
 		for _, sym := range equation.rightPart {
-			if symbol.IsConst(sym) {
+			if symbol.IsConst(sym) || symbol.IsWord(sym) {
 				resultEquation.rightPart = append(resultEquation.rightPart, sym)
 			}
 		}
@@ -263,7 +263,7 @@ func (equation *Equation) Substitute(symbol *symbol.Symbol, newSymbols []symbol.
 	newSymLen := len(newSymbols)
 	var resultEquation Equation
 	for _, sym := range equation.leftPart {
-		if sym.Value() == (*symbol).Value() {
+		if sym == (*symbol) {
 			resultEquation.leftPart = append(resultEquation.leftPart, newSymbols...)
 			resultEquation.leftLength += newSymLen
 		} else {
@@ -272,7 +272,7 @@ func (equation *Equation) Substitute(symbol *symbol.Symbol, newSymbols []symbol.
 		}
 	}
 	for _, sym := range equation.rightPart {
-		if sym.Value() == (*symbol).Value() {
+		if sym == (*symbol) {
 			resultEquation.rightPart = append(resultEquation.rightPart, newSymbols...)
 			resultEquation.rightLength += newSymLen
 		} else {
@@ -285,11 +285,11 @@ func (equation *Equation) Substitute(symbol *symbol.Symbol, newSymbols []symbol.
 }
 
 func (equation *Equation) Reduce() {
+	equation.reduceEmpty()
 	minLen := min(equation.leftLength, equation.rightLength)
 	i := 0
 	for ; i < minLen; i++ {
-		if symbol.IsVar(equation.leftPart[i]) &&
-			equation.leftPart[i].Value() == equation.rightPart[i].Value() {
+		if equation.leftPart[i] == equation.rightPart[i] {
 
 		} else {
 			break
@@ -329,7 +329,7 @@ func (equation *Equation) reduceEmpty() {
 			}
 		}
 		if i > 0 {
-			equation.leftPart = equation.rightPart[i:]
+			equation.rightPart = equation.rightPart[i:]
 			equation.rightLength -= i
 		}
 	}
@@ -351,4 +351,14 @@ func (equation *Equation) IsLeftEmpty() bool {
 func (equation *Equation) IsRightEmpty() bool {
 	return equation.rightLength == 1 &&
 		symbol.IsEmpty(equation.rightPart[0]) || equation.rightLength == 0
+}
+
+func (equation *Equation) Print() {
+	for _, sym := range equation.leftPart {
+		fmt.Printf("%s ", sym.Value())
+	}
+	fmt.Printf("%s ", EQUALS)
+	for _, sym := range equation.rightPart {
+		fmt.Printf("%s ", sym.Value())
+	}
 }

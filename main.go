@@ -59,10 +59,6 @@ func main() {
 		logger.Errorf("error initializing solver: %v", err)
 		return
 	}
-	hasSolution, err := solver.Solve()
-	if err != nil {
-		logger.Errorf("error solving equation: %v", err)
-		return
-	}
+	hasSolution := solver.Solve()
 	fmt.Print(hasSolution)
 }
