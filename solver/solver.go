@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const cycle_range = 30
+const cycle_range = 10
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
 
 type Solver struct {
@@ -19,9 +19,11 @@ type Solver struct {
 	equation      Equation
 	hasSolution   bool
 	cycled        bool
+	dotWriter     DotWriter
+	fullGraph     bool
 }
 
-func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph string, equation string) error {
+func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph string, equation string, fullGraph bool) error {
 	var err error
 	intType, err := matchAlgorithmType(algorithmType)
 	if err != nil {
@@ -42,6 +44,11 @@ func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph 
 	if err != nil {
 		return fmt.Errorf("error parsing equation: %v", err)
 	}
+	err = solver.dotWriter.Init()
+	if err != nil {
+		return fmt.Errorf("error initing solver: %v", err)
+	}
+	solver.fullGraph = fullGraph
 	return nil
 }
 
@@ -93,12 +100,22 @@ func (solver *Solver) getAnswer() string {
 	return "FALSE"
 }
 
-func (solver *Solver) Solve() string {
+func (solver *Solver) Solve() (string, error) {
 	tree := Node{
-		Value: solver.equation,
+		Number: "0",
+		Value:  solver.equation,
+	}
+	err := solver.dotWriter.StartDOTDescription()
+	if err != nil {
+		return "", fmt.Errorf("error writing DOT description: %v", err)
 	}
 	solver.solve(&tree)
-	return solver.getAnswer()
+	result := solver.getAnswer()
+	err = solver.dotWriter.EndDOTDescription()
+	if err != nil {
+		return result, fmt.Errorf("error writing DOT description: %v", err)
+	}
+	return result, nil
 }
 
 func (solver *Solver) checkEquality(node *Node) bool {
@@ -109,6 +126,7 @@ func (solver *Solver) checkHasBeen(node *Node) bool {
 	tr := node.Parent
 	for tr != nil {
 		if node.Value.CheckSameness(&tr.Value) {
+			solver.dotWriter.WriteDottedEdge(node, tr)
 			return true
 		}
 		tr = tr.Parent
@@ -141,7 +159,8 @@ func (solver *Solver) getWord() symbol.Word {
 }
 
 func (solver *Solver) solve(node *Node) {
-	if solver.hasSolution {
+	solver.dotWriter.WriteNode(node)
+	if !solver.fullGraph && solver.hasSolution {
 		return
 	}
 	if len(node.Number) > cycle_range {
@@ -150,6 +169,11 @@ func (solver *Solver) solve(node *Node) {
 	}
 	fmt.Println(node.Number)
 	if solver.checkEquality(node) {
+		trueNode := &TrueNode{
+			number: "T_" + node.Number,
+		}
+		solver.dotWriter.WriteInfoNode(trueNode)
+		solver.dotWriter.WriteInfoEdge(node, trueNode)
 		solver.hasSolution = true
 		fmt.Println("TRUE")
 		fmt.Println(node.Number)
@@ -198,6 +222,9 @@ func (solver *Solver) solve(node *Node) {
 			Value:  thirdEquation,
 		}
 		node.Children = []*Node{&firstChild, &secondChild, &thirdChild}
+		solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.leftPart[0], newValsFirst)
+		solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
+		solver.dotWriter.WriteLabelEdge(node, &thirdChild, &node.Value.leftPart[0], newValsThird)
 	}
 
 	if solver.checkSecondRuleLeft(&node.Value) {
@@ -217,6 +244,8 @@ func (solver *Solver) solve(node *Node) {
 			Value:  secondEquation,
 		}
 		node.Children = []*Node{&firstChild, &secondChild}
+		solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.rightPart[0], newValsFirst)
+		solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
 	}
 	if solver.checkSecondRuleRight(&node.Value) {
 		newValsFirst := []symbol.Symbol{symbol.Empty()}
@@ -235,6 +264,9 @@ func (solver *Solver) solve(node *Node) {
 			Value:  secondEquation,
 		}
 		node.Children = []*Node{&firstChild, &secondChild}
+		solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.leftPart[0], newValsFirst)
+		solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.leftPart[0], newValsSecond)
+
 	}
 	if solver.checkThirdRuleLeft(&node.Value) || solver.checkThirdRuleRight(&node.Value) {
 		eq := node.Value.SubstituteVarsWithEmpty()
@@ -244,12 +276,18 @@ func (solver *Solver) solve(node *Node) {
 			Value:  eq,
 		}
 		node.Children = []*Node{&child}
+		solver.dotWriter.WriteEdge(node, &child)
 	}
 	for _, child := range node.Children {
 		child.Print()
 	}
 	for _, child := range node.Children {
 		solver.solve(child)
+	}
+	if len(node.Children) == 0 {
+		falseNode := &FalseNode{number: "F_" + node.Number}
+		solver.dotWriter.WriteInfoNode(falseNode)
+		solver.dotWriter.WriteInfoEdge(node, falseNode)
 	}
 }
 

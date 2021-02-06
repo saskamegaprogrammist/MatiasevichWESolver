@@ -102,7 +102,7 @@ func Test_Solve_1(t *testing.T) {
 		fmt.Printf("error initializing solver: %v \n", err)
 		t.Errorf("Test_Solve_1 error should be nil")
 	} else {
-		result := solver.Solve()
+		result, _ := solver.Solve()
 		if result != trueStr {
 			t.Errorf("Test_Solve_1 result should be: %s, but got: %s", trueStr, result)
 		}
@@ -116,7 +116,7 @@ func Test_Solve_2(t *testing.T) {
 		fmt.Printf("error initializing solver: %v \n", err)
 		t.Errorf("Test_Solve_2 error should be nil")
 	} else {
-		result := solver.Solve()
+		result, _ := solver.Solve()
 		if result != cycledStr {
 			t.Errorf("Test_Solve_2 result should be: %s, but got: %s", cycledStr, result)
 		}
@@ -130,7 +130,7 @@ func Test_Solve_3(t *testing.T) {
 		fmt.Printf("error initializing solver: %v \n", err)
 		t.Errorf("Test_Solve_3 error should be nil")
 	} else {
-		result := solver.Solve()
+		result, _ := solver.Solve()
 		if result != trueStr {
 			t.Errorf("Test_Solve_3 result should be: %s, but got: %s", trueStr, result)
 		}
@@ -144,7 +144,7 @@ func Test_Solve_4(t *testing.T) {
 		fmt.Printf("error initializing solver: %v \n", err)
 		t.Errorf("Test_Solve_4 error should be nil")
 	} else {
-		result := solver.Solve()
+		result, _ := solver.Solve()
 		if result != falseStr {
 			t.Errorf("Test_Solve_4 result should be: %s, but got: %s", falseStr, result)
 		}

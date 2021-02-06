@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"github.com/google/logger"
 	matlog "github.com/saskamegaprogrammist/MatiasevichWESolver/logger"
@@ -23,10 +24,16 @@ func scanInput(scanner *bufio.Scanner) error {
 	return handleScannerError(scanner)
 }
 
+func parseFLags() bool {
+	fullGraph := flag.Bool("full_graph", false, "print full graph")
+	flag.Parse()
+	return *fullGraph
+}
+
 func main() {
 	var err error
 	matlog.LoggerSetup()
-
+	fullGraph := parseFLags()
 	scanner := bufio.NewScanner(os.Stdin)
 	err = handleScannerError(scanner)
 	if err != nil {
@@ -54,11 +61,14 @@ func main() {
 	equation := scanner.Text()
 
 	var solver solver.Solver
-	err = solver.Init(algorithmType, constantsAlph, varsAlph, equation)
+	err = solver.Init(algorithmType, constantsAlph, varsAlph, equation, fullGraph)
 	if err != nil {
 		logger.Errorf("error initializing solver: %v", err)
 		return
 	}
-	hasSolution := solver.Solve()
+	hasSolution, err := solver.Solve()
+	if err != nil {
+		logger.Errorf("error writing graph: %v", err)
+	}
 	fmt.Print(hasSolution)
 }

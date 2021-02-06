@@ -354,11 +354,17 @@ func (equation *Equation) IsRightEmpty() bool {
 }
 
 func (equation *Equation) Print() {
+	fmt.Print(equation.String())
+}
+
+func (equation *Equation) String() string {
+	var result string
 	for _, sym := range equation.leftPart {
-		fmt.Printf("%s ", sym.Value())
+		result += fmt.Sprintf("%s ", sym.Value())
 	}
-	fmt.Printf("%s ", EQUALS)
+	result += fmt.Sprintf("%s ", EQUALS)
 	for _, sym := range equation.rightPart {
-		fmt.Printf("%s ", sym.Value())
+		result += fmt.Sprintf("%s ", sym.Value())
 	}
+	return result
 }
