@@ -167,7 +167,7 @@ func (solver *Solver) solve(node *Node) {
 		solver.cycled = true
 		return
 	}
-	fmt.Println(node.Number)
+	//fmt.Println(node.Number)
 	if solver.checkEquality(node) {
 		trueNode := &TrueNode{
 			number: "T_" + node.Number,
@@ -175,13 +175,13 @@ func (solver *Solver) solve(node *Node) {
 		solver.dotWriter.WriteInfoNode(trueNode)
 		solver.dotWriter.WriteInfoEdge(node, trueNode)
 		solver.hasSolution = true
-		fmt.Println("TRUE")
-		fmt.Println(node.Number)
+		//fmt.Println("TRUE")
+		//fmt.Println(node.Number)
 		return
 	}
 	if solver.checkHasBeen(node) {
-		fmt.Println("HAS BEEN")
-		fmt.Println(node.Number)
+		//fmt.Println("HAS BEEN")
+		//fmt.Println(node.Number)
 		return
 	}
 	if solver.checkFirstRule(&node.Value) {
@@ -278,9 +278,9 @@ func (solver *Solver) solve(node *Node) {
 		node.Children = []*Node{&child}
 		solver.dotWriter.WriteEdge(node, &child)
 	}
-	for _, child := range node.Children {
-		child.Print()
-	}
+	//for _, child := range node.Children {
+	//	child.Print()
+	//}
 	for _, child := range node.Children {
 		solver.solve(child)
 	}

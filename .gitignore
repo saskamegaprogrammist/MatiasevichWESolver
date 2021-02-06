@@ -18,3 +18,5 @@
 *.log
 *.dot
 *.png
+*/*.dot
+*/*.png

@@ -15,8 +15,8 @@ type Equation struct {
 const EQUALS = "="
 
 func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet *Alphabet) error {
-	fmt.Println(constAlphabet.words)
-	fmt.Print(varsAlphabet.words)
+	//fmt.Println(constAlphabet.words)
+	//fmt.Print(varsAlphabet.words)
 	var err error
 	for i := 0; i < len(eq); i++ {
 		if string(eq[i]) == EQUALS {
@@ -132,7 +132,7 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 			}
 		}
 	}
-	fmt.Print(symbols)
+	//fmt.Print(symbols)
 	return symbols, nil
 }
 
