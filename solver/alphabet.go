@@ -6,6 +6,7 @@ const (
 	OPENBR  = "{"
 	CLOSEBR = "}"
 	COMMA   = ","
+	SPACE   = " "
 )
 
 type Alphabet struct {

@@ -60,15 +60,20 @@ func (solver *Solver) parseAlphabet(alphabetStr string) (Alphabet, error) {
 		return alphabet, fmt.Errorf("invalid constants alphabet: %s", alphabetStr)
 	}
 	alphLetters := alphabetStr[1 : lenAlph-1]
-	if len(alphLetters) == 0 {
+	lenLetters := len(alphLetters)
+	if lenLetters == 0 {
 		return alphabet, nil
 	}
 	var currentLetter string
-	for _, symbol := range alphLetters {
-		stringSymbol := string(symbol)
+	for i := 0; i < lenLetters; i++ {
+		sym := alphLetters[i]
+		stringSymbol := string(sym)
 		if stringSymbol == COMMA {
 			if currentLetter == "" {
 				return alphabet, fmt.Errorf("empty constant in alphabet: %s", alphabetStr)
+			}
+			if i+1 != lenLetters && string(alphLetters[i+1]) != SPACE {
+				return alphabet, fmt.Errorf("letters must be separated by space: %s", alphabetStr)
 			}
 			alphabet.AddWord(currentLetter)
 			if len(currentLetter) > maxWordLength {
@@ -184,6 +189,79 @@ func (solver *Solver) solve(node *Node) {
 		//fmt.Println(node.Number)
 		return
 	}
+	if solver.algorithmType == FINITE {
+		if solver.checkFirstRuleFinite(&node.Value) {
+			newVals := []symbol.Symbol{node.Value.rightPart[0]}
+			eq := node.Value.Substitute(&node.Value.leftPart[0], newVals)
+			child := Node{
+				Number: "a" + node.Number,
+				Parent: node,
+				Value:  eq,
+			}
+			node.Children = []*Node{&child}
+			solver.dotWriter.WriteLabelEdge(node, &child, &node.Value.leftPart[0], newVals)
+		}
+		if solver.checkSecondRuleLeftFinite(&node.Value) {
+			newVals := []symbol.Symbol{node.Value.leftPart[0]}
+			eq := node.Value.Substitute(&node.Value.rightPart[0], newVals)
+			child := Node{
+				Number: "b" + node.Number,
+				Parent: node,
+				Value:  eq,
+			}
+			node.Children = []*Node{&child}
+			solver.dotWriter.WriteLabelEdge(node, &child, &node.Value.rightPart[0], newVals)
+		}
+		if solver.checkSecondRuleRightFinite(&node.Value) {
+			newVals := []symbol.Symbol{node.Value.rightPart[0]}
+			eq := node.Value.Substitute(&node.Value.leftPart[0], newVals)
+			child := Node{
+				Number: "c" + node.Number,
+				Parent: node,
+				Value:  eq,
+			}
+			node.Children = []*Node{&child}
+			solver.dotWriter.WriteLabelEdge(node, &child, &node.Value.leftPart[0], newVals)
+		}
+		if solver.checkFourthRuleLeft(&node.Value) {
+			newValsFirst := []symbol.Symbol{symbol.Empty()}
+			firstEquation := node.Value.Substitute(&node.Value.rightPart[0], newValsFirst)
+			firstChild := Node{
+				Number: "d" + node.Number,
+				Parent: node,
+				Value:  firstEquation,
+			}
+			newValsSecond := []symbol.Symbol{node.Value.leftPart[0], node.Value.rightPart[0]}
+			secondEquation := node.Value.Substitute(&node.Value.rightPart[0], newValsSecond)
+			secondChild := Node{
+				Number: "e" + node.Number,
+				Parent: node,
+				Value:  secondEquation,
+			}
+			node.Children = []*Node{&firstChild, &secondChild}
+			solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.rightPart[0], newValsFirst)
+			solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
+		}
+		if solver.checkFourthRuleRight(&node.Value) {
+			newValsFirst := []symbol.Symbol{symbol.Empty()}
+			firstEquation := node.Value.Substitute(&node.Value.leftPart[0], newValsFirst)
+			firstChild := Node{
+				Number: "f" + node.Number,
+				Parent: node,
+				Value:  firstEquation,
+			}
+			newValsSecond := []symbol.Symbol{node.Value.rightPart[0], node.Value.leftPart[0]}
+			secondEquation := node.Value.Substitute(&node.Value.leftPart[0], newValsSecond)
+			secondChild := Node{
+				Number: "g" + node.Number,
+				Parent: node,
+				Value:  secondEquation,
+			}
+			node.Children = []*Node{&firstChild, &secondChild}
+			solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.rightPart[0], newValsFirst)
+			solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
+		}
+	}
 	if solver.checkFirstRule(&node.Value) {
 		var newValsFirst []symbol.Symbol
 		if solver.algorithmType == INFINITE {
@@ -293,16 +371,22 @@ func (solver *Solver) solve(node *Node) {
 
 func (solver *Solver) checkFirstRule(eq *Equation) bool {
 	return eq.leftLength > 0 && eq.rightLength > 0 &&
-		symbol.IsVarOrWord(eq.leftPart[0]) && symbol.IsVarOrWord(eq.rightPart[0])
+		symbol.IsVar(eq.leftPart[0]) && symbol.IsVar(eq.rightPart[0])
+}
+
+func (solver *Solver) checkFirstRuleFinite(eq *Equation) bool {
+	return eq.leftLength > 0 && eq.rightLength > 0 &&
+		symbol.IsWord(eq.leftPart[0]) && symbol.IsWord(eq.rightPart[0])
 }
 
 func (solver *Solver) checkSecondRuleRight(eq *Equation) bool {
 	return eq.leftLength > 0 && eq.rightLength > 0 &&
-		symbol.IsVarOrWord(eq.leftPart[0]) && symbol.IsConst(eq.rightPart[0])
+		symbol.IsVar(eq.leftPart[0]) && symbol.IsConst(eq.rightPart[0])
 }
+
 func (solver *Solver) checkSecondRuleLeft(eq *Equation) bool {
 	return eq.leftLength > 0 && eq.rightLength > 0 &&
-		symbol.IsConst(eq.leftPart[0]) && symbol.IsVarOrWord(eq.rightPart[0])
+		symbol.IsConst(eq.leftPart[0]) && symbol.IsVar(eq.rightPart[0])
 }
 
 func (solver *Solver) checkSecondRuleRightFinite(eq *Equation) bool {
@@ -319,4 +403,14 @@ func (solver *Solver) checkThirdRuleRight(eq *Equation) bool {
 }
 func (solver *Solver) checkThirdRuleLeft(eq *Equation) bool {
 	return eq.IsLeftEmpty()
+}
+
+func (solver *Solver) checkFourthRuleLeft(eq *Equation) bool {
+	return eq.leftLength > 0 && eq.rightLength > 0 &&
+		symbol.IsWord(eq.leftPart[0]) && symbol.IsVar(eq.rightPart[0])
+}
+
+func (solver *Solver) checkFourthRuleRight(eq *Equation) bool {
+	return eq.leftLength > 0 && eq.rightLength > 0 &&
+		symbol.IsVar(eq.leftPart[0]) && symbol.IsWord(eq.rightPart[0])
 }
