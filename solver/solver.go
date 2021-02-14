@@ -8,10 +8,13 @@ import (
 	"time"
 )
 
-const cycle_range = 10
+var timeStart time.Time
+
+const cycle_range = 100
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
 
 type Solver struct {
+	cycleRange    int
 	algorithmType int64
 	constantsAlph Alphabet
 	varsAlph      Alphabet
@@ -21,9 +24,12 @@ type Solver struct {
 	cycled        bool
 	dotWriter     DotWriter
 	fullGraph     bool
+	makePng       bool
 }
 
-func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph string, equation string, fullGraph bool) error {
+func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph string, equation string,
+	fullGraph bool, makePng bool, cycleRange int, outputDir string) error {
+	timeStart = time.Now()
 	var err error
 	intType, err := matchAlgorithmType(algorithmType)
 	if err != nil {
@@ -44,11 +50,20 @@ func (solver *Solver) Init(algorithmType string, constantsAlph string, varsAlph 
 	if err != nil {
 		return fmt.Errorf("error parsing equation: %v", err)
 	}
-	err = solver.dotWriter.Init()
+	err = solver.dotWriter.Init(algorithmType, solver.equation.String(), outputDir)
 	if err != nil {
 		return fmt.Errorf("error initing solver: %v", err)
 	}
 	solver.fullGraph = fullGraph
+	solver.makePng = makePng
+	if cycleRange == 0 {
+		solver.cycleRange = cycle_range
+	} else {
+		solver.cycleRange = cycleRange
+	}
+
+	solver.equation.Print()
+	fmt.Println(algorithmType)
 	return nil
 }
 
@@ -56,7 +71,7 @@ func (solver *Solver) parseAlphabet(alphabetStr string) (Alphabet, error) {
 	var alphabet Alphabet
 	var maxWordLength int
 	lenAlph := len(alphabetStr)
-	if alphabetStr[0:1] != OPENBR || alphabetStr[lenAlph-1:] != CLOSEBR {
+	if lenAlph < 2 || alphabetStr[0:1] != OPENBR || alphabetStr[lenAlph-1:] != CLOSEBR {
 		return alphabet, fmt.Errorf("invalid constants alphabet: %s", alphabetStr)
 	}
 	alphLetters := alphabetStr[1 : lenAlph-1]
@@ -74,6 +89,8 @@ func (solver *Solver) parseAlphabet(alphabetStr string) (Alphabet, error) {
 			}
 			if i+1 != lenLetters && string(alphLetters[i+1]) != SPACE {
 				return alphabet, fmt.Errorf("letters must be separated by space: %s", alphabetStr)
+			} else {
+				i++
 			}
 			alphabet.AddWord(currentLetter)
 			if len(currentLetter) > maxWordLength {
@@ -105,26 +122,31 @@ func (solver *Solver) getAnswer() string {
 	return "FALSE"
 }
 
-func (solver *Solver) Solve() (string, error) {
+func (solver *Solver) Solve() (string, time.Duration, error) {
 	tree := Node{
 		Number: "0",
 		Value:  solver.equation,
 	}
 	err := solver.dotWriter.StartDOTDescription()
 	if err != nil {
-		return "", fmt.Errorf("error writing DOT description: %v", err)
+		return "", 0, fmt.Errorf("error writing DOT description: %v", err)
 	}
 	solver.solve(&tree)
 	result := solver.getAnswer()
-	err = solver.dotWriter.EndDOTDescription()
+	measuredTime := time.Since(timeStart)
+	err = solver.dotWriter.EndDOTDescription(solver.makePng)
 	if err != nil {
-		return result, fmt.Errorf("error writing DOT description: %v", err)
+		return result, measuredTime, fmt.Errorf("error writing DOT description: %v", err)
 	}
-	return result, nil
+	return result, measuredTime, nil
 }
 
 func (solver *Solver) checkEquality(node *Node) bool {
 	return node.Value.CheckEquality()
+}
+
+func (solver *Solver) checkInequality(node *Node) bool {
+	return node.Value.CheckInequality()
 }
 
 func (solver *Solver) checkHasBeen(node *Node) bool {
@@ -168,11 +190,20 @@ func (solver *Solver) solve(node *Node) {
 	if !solver.fullGraph && solver.hasSolution {
 		return
 	}
-	if len(node.Number) > cycle_range {
+	if len(node.Number) > solver.cycleRange {
 		solver.cycled = true
 		return
 	}
 	//fmt.Println(node.Number)
+	if solver.checkInequality(node) {
+		falseNode := &FalseNode{
+			number: "F_" + node.Number,
+		}
+		solver.dotWriter.WriteInfoNode(falseNode)
+		solver.dotWriter.WriteInfoEdge(node, falseNode)
+		//fmt.Println("___FALSE")
+		return
+	}
 	if solver.checkEquality(node) {
 		trueNode := &TrueNode{
 			number: "T_" + node.Number,
@@ -258,8 +289,8 @@ func (solver *Solver) solve(node *Node) {
 				Value:  secondEquation,
 			}
 			node.Children = []*Node{&firstChild, &secondChild}
-			solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.rightPart[0], newValsFirst)
-			solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
+			solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.leftPart[0], newValsFirst)
+			solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.leftPart[0], newValsSecond)
 		}
 	}
 	if solver.checkFirstRule(&node.Value) {
@@ -356,7 +387,9 @@ func (solver *Solver) solve(node *Node) {
 		node.Children = []*Node{&child}
 		solver.dotWriter.WriteEdge(node, &child)
 	}
-	//for _, child := range node.Children {
+	//node.Print()
+	//for i, child := range node.Children {
+	//	fmt.Printf(" %d  :", i)
 	//	child.Print()
 	//}
 	for _, child := range node.Children {

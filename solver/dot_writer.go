@@ -11,8 +11,8 @@ type DotWriter struct {
 	writer Writer
 }
 
-func (dotWriter *DotWriter) Init() error {
-	err := dotWriter.writer.Init()
+func (dotWriter *DotWriter) Init(mode string, eq string, outputDir string) error {
+	err := dotWriter.writer.Init(mode, eq, outputDir)
 	if err != nil {
 		return fmt.Errorf("error initing writer: %v", err)
 	}
@@ -27,7 +27,7 @@ func (dotWriter *DotWriter) StartDOTDescription() error {
 	return nil
 }
 
-func (dotWriter *DotWriter) EndDOTDescription() error {
+func (dotWriter *DotWriter) EndDOTDescription(makePng bool) error {
 	err := dotWriter.writer.Write("}")
 	if err != nil {
 		return fmt.Errorf("error ending DOT description: %v", err)
@@ -36,9 +36,11 @@ func (dotWriter *DotWriter) EndDOTDescription() error {
 	if err != nil {
 		return fmt.Errorf("error flushing DOT description: %v", err)
 	}
-	err = dotWriter.CreatePNG()
-	if err != nil {
-		return fmt.Errorf("error creating png: %v", err)
+	if makePng {
+		err = dotWriter.CreatePNG()
+		if err != nil {
+			return fmt.Errorf("error creating png: %v", err)
+		}
 	}
 	return nil
 }

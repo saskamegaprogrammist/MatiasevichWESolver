@@ -9,7 +9,7 @@ const (
 
 var typesMap = map[string]int64{
 	"Finite":   FINITE,
-	"Standart": INFINITE,
+	"Standard": INFINITE,
 }
 
 func matchAlgorithmType(algorithmType string) (int64, error) {

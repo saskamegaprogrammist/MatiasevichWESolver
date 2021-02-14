@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"time"
 )
 
 const (
@@ -14,13 +13,14 @@ const (
 )
 
 type Writer struct {
-	writer   *bufio.Writer
-	file     *os.File
-	filename string
+	writer    *bufio.Writer
+	file      *os.File
+	filename  string
+	outputDir string
 }
 
-func createFileName() string {
-	return fmt.Sprintf("%s%d", FILENAME, time.Now().UnixNano())
+func (writer *Writer) createFileName(mode string, eq string) string {
+	return fmt.Sprintf("%s%c%s%s_%s", writer.outputDir, os.PathSeparator, FILENAME, mode, eq)
 }
 
 func (writer *Writer) GetGraphFilename() string {
@@ -31,10 +31,11 @@ func (writer *Writer) GetPicFilename() string {
 	return fmt.Sprintf("%s%s", writer.filename, PicEXT)
 }
 
-func (writer *Writer) Init() error {
+func (writer *Writer) Init(mode string, eq string, outputDir string) error {
 	var err error
 	var file *os.File
-	writer.filename = createFileName()
+	writer.outputDir = outputDir
+	writer.filename = writer.createFileName(mode, eq)
 	file, err = os.Create(writer.GetGraphFilename())
 	if err != nil {
 		return fmt.Errorf("error creating file: %v", err)

@@ -20,3 +20,8 @@
 *.png
 */*.dot
 */*.png
+
+checked
+checked2
+output_files
+*.txt

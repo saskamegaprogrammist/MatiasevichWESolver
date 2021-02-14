@@ -18,36 +18,120 @@ func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet 
 	//fmt.Println(constAlphabet.words)
 	//fmt.Print(varsAlphabet.words)
 	var err error
-	for i := 0; i < len(eq); i++ {
-		if string(eq[i]) == EQUALS {
-			eqleftPart := eq[0:i]
-			var leftSymbols []symbol.Symbol
-			if eqleftPart == "" {
-				leftSymbols = append(leftSymbols, symbol.Empty())
-			} else {
-				leftSymbols, err = matchWithAlphabets(eqleftPart, constAlphabet, varsAlphabet)
-				if err != nil {
-					return fmt.Errorf("error matching alphabet: %v", err)
-				}
+	isEq, i := checkEquation(eq)
+	if isEq {
+		eqleftPart := eq[0 : i-1]
+		var leftSymbols []symbol.Symbol
+		if eqleftPart == "" {
+			leftSymbols = append(leftSymbols, symbol.Empty())
+		} else {
+			leftSymbols, err = matchWithAlphabetsWithSpace(eqleftPart, constAlphabet, varsAlphabet)
+			if err != nil {
+				return fmt.Errorf("error matching alphabet: %v", err)
 			}
-			eqRightPart := eq[i+1:]
-			var rightSymbols []symbol.Symbol
-			if eqRightPart == "" {
-				rightSymbols = append(rightSymbols, symbol.Empty())
-			} else {
-				rightSymbols, err = matchWithAlphabets(eqRightPart, constAlphabet, varsAlphabet)
-				if err != nil {
-					return fmt.Errorf("error matching alphabet: %v", err)
-				}
-			}
-			equation.leftLength = len(leftSymbols)
-			equation.leftPart = leftSymbols
-			equation.rightLength = len(rightSymbols)
-			equation.rightPart = rightSymbols
-			return nil
 		}
+		eqRightPart := eq[i+2:]
+		var rightSymbols []symbol.Symbol
+		if eqRightPart == "" {
+			rightSymbols = append(rightSymbols, symbol.Empty())
+		} else {
+			rightSymbols, err = matchWithAlphabetsWithSpace(eqRightPart, constAlphabet, varsAlphabet)
+			if err != nil {
+				return fmt.Errorf("error matching alphabet: %v", err)
+			}
+		}
+		equation.leftLength = len(leftSymbols)
+		equation.leftPart = leftSymbols
+		equation.rightLength = len(rightSymbols)
+		equation.rightPart = rightSymbols
+		return nil
 	}
 	return fmt.Errorf("invalid equation: %s", eq)
+}
+
+func checkEquation(eq string) (bool, int) {
+	eqLen := len(eq) - 1
+	for i := 0; i < eqLen; i++ {
+		if string(eq[i]) == EQUALS && string(eq[i-1]) == SPACE && string(eq[i+1]) == SPACE {
+			return true, i
+		}
+	}
+	return false, 0
+}
+
+func matchWithAlphabetsWithSpace(eqPart string, constAlphabet *Alphabet, varsAlphabet *Alphabet) ([]symbol.Symbol, error) {
+	var symbols []symbol.Symbol
+	var word string
+	var err error
+	var matchType int
+	for _, eqSym := range eqPart {
+		eqSymString := string(eqSym)
+		if eqSymString != SPACE {
+			word += eqSymString
+		} else if word != "" {
+			matchType, err = matchWord(word, varsAlphabet, constAlphabet)
+			if err != nil {
+				return symbols, fmt.Errorf("error matching word: %v", err)
+			}
+			symb, err := symbol.NewSymbol(matchType, word)
+			if err != nil {
+				return symbols, fmt.Errorf("error creating symbol: %v", err)
+			}
+			symbols = append(symbols, symb)
+			word = ""
+		}
+	}
+	if word != "" {
+		matchType, err = matchWord(word, varsAlphabet, constAlphabet)
+		if err != nil {
+			return symbols, fmt.Errorf("error matching word: %v", err)
+		}
+		symb, err := symbol.NewSymbol(matchType, word)
+		if err != nil {
+			return symbols, fmt.Errorf("error creating symbol: %v", err)
+		}
+		symbols = append(symbols, symb)
+	}
+	return symbols, nil
+}
+
+func matchWord(word string, varsAlphabet *Alphabet, constAlphabet *Alphabet) (int, error) {
+	var matchVar bool
+	var matchConst bool
+	var matchEmpty bool
+	var matchType int
+	matchVar = findInAlphabet(word, varsAlphabet)
+	if matchVar {
+		matchType = symbol.VARIABLE
+	}
+	matchConst = findInAlphabet(word, constAlphabet)
+	if matchConst {
+		matchType = symbol.CONSTANT
+	}
+
+	if matchConst && matchVar {
+		return matchType, fmt.Errorf("variable and constant found for word: %s", word)
+	}
+
+	if symbol.IsEmptyValue(word) {
+		matchEmpty = true
+		matchType = symbol.EMPTY
+	}
+	if !(matchConst || matchEmpty || matchVar) {
+		return matchType, fmt.Errorf("no match found with word: %s", word)
+	}
+	return matchType, nil
+}
+
+func findInAlphabet(word string, alphabet *Alphabet) bool {
+	if len(word) <= alphabet.maxWordLength {
+		for _, vWord := range alphabet.words {
+			if word == vWord {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Alphabet) ([]symbol.Symbol, error) {
@@ -63,27 +147,18 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 	continueSearch := true
 	for {
 		currentWord += string(eqPart[i])
-		if len(currentWord) <= varsAlphabet.maxWordLength {
-			for _, vWord := range varsAlphabet.words {
-				if currentWord == vWord {
-					matchType = symbol.VARIABLE
-					match = true
-					break
-				}
-			}
+		match = findInAlphabet(currentWord, varsAlphabet)
+		if match {
+			matchType = symbol.VARIABLE
 		}
-		if len(currentWord) <= constAlphabet.maxWordLength {
-			for _, cWord := range constAlphabet.words {
-				if currentWord == cWord {
-					matchType = symbol.CONSTANT
-					match = true
-					break
-				}
-			}
+		match = findInAlphabet(currentWord, constAlphabet)
+		if match {
+			matchType = symbol.CONSTANT
 		}
+
 		if symbol.IsEmptyValue(currentWord) {
-			matchType = symbol.EMPTY
 			match = true
+			matchType = symbol.EMPTY
 		}
 		nextWordLen := len(currentWord) + 1
 		continueSearch = (nextWordLen <= varsAlphabet.maxWordLength || nextWordLen <= constAlphabet.maxWordLength) && eqLen != i+1
@@ -136,6 +211,37 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 	return symbols, nil
 }
 
+func (equation *Equation) CheckInequality() bool {
+	//equation.Print()
+	if equation.IsRightEmpty() {
+		if equation.leftLength > 0 {
+			counter := 0
+			for _, sym := range equation.leftPart {
+				if symbol.IsWord(sym) || symbol.IsConst(sym) {
+					counter++
+				}
+			}
+			if counter != 0 {
+				return true
+			}
+		}
+	}
+	if equation.IsLeftEmpty() {
+		if equation.rightLength > 0 {
+			counter := 0
+			for _, sym := range equation.rightPart {
+				if symbol.IsWord(sym) || symbol.IsConst(sym) {
+					counter++
+				}
+			}
+			if counter != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (equation *Equation) CheckEquality() bool {
 	if equation.rightLength == 0 {
 		equation.rightLength++
@@ -169,6 +275,7 @@ func (equation *Equation) CheckEquality() bool {
 }
 
 func (equation *Equation) CheckSameness(eq *Equation) bool {
+	var wordsMap = map[string]string{}
 	if eq.rightLength == 0 {
 		eq.rightLength++
 		eq.rightPart = append(eq.rightPart, symbol.Empty())
@@ -189,7 +296,20 @@ func (equation *Equation) CheckSameness(eq *Equation) bool {
 				return false
 			}
 			if sym != eq.leftPart[i] {
-				return false
+				if symbol.IsWord(sym) && symbol.IsWord(eq.leftPart[i]) {
+					if wordsMap[sym.Value()] == "" {
+						wordsMap[sym.Value()] = eq.leftPart[i].Value()
+						i++
+					} else {
+						if wordsMap[sym.Value()] != eq.leftPart[i].Value() {
+							return false
+						} else {
+							i++
+						}
+					}
+				} else {
+					return false
+				}
 			} else {
 				i++
 			}
@@ -213,7 +333,20 @@ func (equation *Equation) CheckSameness(eq *Equation) bool {
 				return false
 			}
 			if sym != eq.rightPart[i] {
-				return false
+				if symbol.IsWord(sym) && symbol.IsWord(eq.rightPart[i]) {
+					if wordsMap[sym.Value()] == "" {
+						wordsMap[sym.Value()] = eq.rightPart[i].Value()
+						i++
+					} else {
+						if wordsMap[sym.Value()] != eq.rightPart[i].Value() {
+							return false
+						} else {
+							i++
+						}
+					}
+				} else {
+					return false
+				}
 			} else {
 				i++
 			}
@@ -354,7 +487,7 @@ func (equation *Equation) IsRightEmpty() bool {
 }
 
 func (equation *Equation) Print() {
-	fmt.Print(equation.String())
+	fmt.Println(equation.String())
 }
 
 func (equation *Equation) String() string {

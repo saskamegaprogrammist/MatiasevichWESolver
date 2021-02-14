@@ -31,17 +31,32 @@ func Test_InitEq_Error_1(t *testing.T) {
 	}
 }
 
-var test2InitEqErrorMessage = "error matching alphabet: no match for word: o"
+var test2InitEqErrorMessage = "error matching alphabet: error matching word: no match found with word: o"
 
 func Test_InitEq_Error_2(t *testing.T) {
 	var eq Equation
-	err := eq.Init("a=o", &constAlph, &varsAlph)
+	err := eq.Init("a = o", &constAlph, &varsAlph)
 	if err == nil {
 		t.Errorf("Test_InitEq_Error_2 failed: error shouldn\\'t be nil")
 	} else {
 		if err.Error() != test2InitEqErrorMessage {
 			fmt.Println(err.Error())
 			t.Errorf("Test_InitEq_Error_2 failed: wrong error message")
+		}
+	}
+}
+
+var test3InitEqErrorMessage = "invalid equation: a=o"
+
+func Test_InitEq_Error_3(t *testing.T) {
+	var eq Equation
+	err := eq.Init("a=o", &constAlph, &varsAlph)
+	if err == nil {
+		t.Errorf("Test_InitEq_Error_3 failed: error shouldn\\'t be nil")
+	} else {
+		if err.Error() != test3InitEqErrorMessage {
+			fmt.Println(err.Error())
+			t.Errorf("Test_InitEq_Error_3 failed: wrong error message")
 		}
 	}
 }
@@ -59,7 +74,7 @@ var varsAlphMisleading = Alphabet{
 
 func Test_InitEq_1(t *testing.T) {
 	var eq Equation
-	err := eq.Init("aaaaaaabx=aaaabxp", &constAlphMisleading, &varsAlphMisleading)
+	err := eq.Init("aaaaa aabx = aaaa bxp", &constAlphMisleading, &varsAlphMisleading)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("Test_InitEq_1 failed: error shouldn be nil")
@@ -74,7 +89,7 @@ func Test_InitEq_1(t *testing.T) {
 
 func Test_InitEq_2(t *testing.T) {
 	var eq Equation
-	err := eq.Init("aaux=yibp", &constAlph, &varsAlph)
+	err := eq.Init("a a ux = yi b p", &constAlph, &varsAlph)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("Test_InitEq_2 failed: error shouldn be nil")
@@ -102,7 +117,7 @@ var varsAlphNew = Alphabet{
 
 func TestEquation_Reduce_1(t *testing.T) {
 	var eq Equation
-	err := eq.Init("abx=$abv", &constAlphNew, &varsAlphNew)
+	err := eq.Init("a b x = $ a b v", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("TestEquation_Reduce_1 failed: error shouldn be nil")
@@ -129,7 +144,7 @@ func TestEquation_Reduce_1(t *testing.T) {
 
 func TestEquation_Reduce_2(t *testing.T) {
 	var eq Equation
-	err := eq.Init("x$=x$av", &constAlphNew, &varsAlphNew)
+	err := eq.Init("x $ = x $ a v", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("TestEquation_Reduce_2 failed: error shouldn be nil")
@@ -159,7 +174,7 @@ func TestEquation_Reduce_2(t *testing.T) {
 
 func TestEquation_Substitute_1(t *testing.T) {
 	var eq Equation
-	err := eq.Init("abx=vb", &constAlphNew, &varsAlphNew)
+	err := eq.Init("a b x = v b", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("TestEquation_Substitute_1 failed: error shouldn be nil")
@@ -188,7 +203,7 @@ func TestEquation_Substitute_1(t *testing.T) {
 
 func TestEquation_Substitute_2(t *testing.T) {
 	var eq Equation
-	err := eq.Init("xbxa=vb", &constAlphNew, &varsAlphNew)
+	err := eq.Init("x b x a = v b", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("TestEquation_Substitute_2 failed: error shouldn be nil")
@@ -219,7 +234,7 @@ func TestEquation_Substitute_2(t *testing.T) {
 
 func TestEquation_Substitute_3(t *testing.T) {
 	var eq Equation
-	err := eq.Init("xav=", &constAlphNew, &varsAlphNew)
+	err := eq.Init("x a v = ", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
 		t.Errorf("TestEquation_Substitute_3 failed: error shouldn be nil")
