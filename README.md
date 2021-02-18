@@ -36,7 +36,7 @@ Matiasevich word equations solver
 ### Input format:
 
 - Finite | Standard - *algorithm type*
-- {} | {const(, v)*}  - *constants alphabet*
+- {} | {const(, const)*}  - *constants alphabet*
 - {} | {var(, var)*} - *variables alphabet*
 - u a v = v a u - *equation*
 

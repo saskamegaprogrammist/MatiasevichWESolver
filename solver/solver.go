@@ -311,7 +311,6 @@ func (solver *Solver) solve(node *Node) {
 		var newValsSecond []symbol.Symbol
 		if solver.algorithmType == INFINITE {
 			newValsSecond = []symbol.Symbol{node.Value.leftPart[0], node.Value.rightPart[0]}
-
 		}
 		if solver.algorithmType == FINITE {
 			word := solver.getWord()
@@ -330,10 +329,10 @@ func (solver *Solver) solve(node *Node) {
 			Parent: node,
 			Value:  thirdEquation,
 		}
-		node.Children = []*Node{&firstChild, &secondChild, &thirdChild}
+		node.Children = []*Node{&thirdChild, &firstChild, &secondChild}
+		solver.dotWriter.WriteLabelEdge(node, &thirdChild, &node.Value.leftPart[0], newValsThird)
 		solver.dotWriter.WriteLabelEdge(node, &firstChild, &node.Value.leftPart[0], newValsFirst)
 		solver.dotWriter.WriteLabelEdge(node, &secondChild, &node.Value.rightPart[0], newValsSecond)
-		solver.dotWriter.WriteLabelEdge(node, &thirdChild, &node.Value.leftPart[0], newValsThird)
 	}
 
 	if solver.checkSecondRuleLeft(&node.Value) {
