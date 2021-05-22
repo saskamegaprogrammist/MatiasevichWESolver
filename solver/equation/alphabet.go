@@ -1,4 +1,4 @@
-package solver
+package equation
 
 import "fmt"
 
@@ -13,6 +13,21 @@ type Alphabet struct {
 	words         []string
 	size          int
 	maxWordLength int
+}
+
+func NewAlphabet(words []string, size int, maxWordLength int) (Alphabet, error) {
+	if len(words) != size {
+		return Alphabet{}, fmt.Errorf("wrong size: %d != %d", len(words), size)
+	}
+	return Alphabet{
+		words:         words,
+		size:          size,
+		maxWordLength: maxWordLength,
+	}, nil
+}
+
+func (alphabet *Alphabet) SetMaxWordLength(len int) {
+	alphabet.maxWordLength = len
 }
 
 func (alphabet *Alphabet) AddWord(word string) {

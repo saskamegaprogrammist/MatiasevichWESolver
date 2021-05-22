@@ -9,7 +9,7 @@ const (
 	CONSTANT    = 1
 	VARIABLE    = 2
 	EMPTY       = 3
-	WORD        = 4
+	LETTER      = 4
 	emptySymbol = "$"
 	len         = 1
 )
@@ -41,15 +41,15 @@ func (empty EmptySymbol) Value() string {
 	return emptySymbol
 }
 
-type Word struct {
+type Letter struct {
 	value string
 }
 
-func (word Word) Value() string {
-	return word.value
+func (letter Letter) Value() string {
+	return letter.value
 }
 
-func (word Word) Len() int {
+func (letter Letter) Len() int {
 	return len
 }
 
@@ -65,8 +65,8 @@ func Var(value string) Variable {
 	return Variable{value: value}
 }
 
-func WordVar(value string) Word {
-	return Word{value: value}
+func LetterVar(value string) Letter {
+	return Letter{value: value}
 }
 
 func IsEmptyValue(value string) bool {
@@ -85,12 +85,12 @@ func IsVar(sym Symbol) bool {
 	return reflect.TypeOf(sym) == reflect.TypeOf(Variable{})
 }
 
-func IsWord(sym Symbol) bool {
-	return reflect.TypeOf(sym) == reflect.TypeOf(Word{})
+func IsLetter(sym Symbol) bool {
+	return reflect.TypeOf(sym) == reflect.TypeOf(Letter{})
 }
 
-func IsVarOrWord(sym Symbol) bool {
-	return IsWord(sym) || IsVar(sym)
+func IsLetterOrVar(sym Symbol) bool {
+	return IsLetter(sym) || IsVar(sym)
 }
 
 func NewSymbol(symbolType int, value string) (Symbol, error) {
@@ -99,8 +99,8 @@ func NewSymbol(symbolType int, value string) (Symbol, error) {
 		return Const(value), nil
 	case VARIABLE:
 		return Var(value), nil
-	case WORD:
-		return WordVar(value), nil
+	case LETTER:
+		return LetterVar(value), nil
 	case EMPTY:
 		return Empty(), nil
 	default:

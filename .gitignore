@@ -21,7 +21,9 @@
 */*.dot
 */*.png
 
-checked
-checked2
+input_files/a
+a_1
+input_files/checked
+input_files/checked2
 output_files
 *.txt
