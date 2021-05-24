@@ -14,9 +14,18 @@ type Equation struct {
 
 const EQUALS = "="
 
+func (equation *Equation) IsEmpty() bool {
+	return equation.LeftPart.Length == 0 && equation.RightPart.Length == 0
+}
+
 func (equation *Equation) New() {
 	equation.LeftPart.New()
 	equation.RightPart.New()
+}
+
+func (equation *Equation) NewFromParts(leftPart []symbol.Symbol, rightPart []symbol.Symbol) {
+	equation.LeftPart.NewFromSymbols(leftPart)
+	equation.RightPart.NewFromSymbols(rightPart)
 }
 
 func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet *Alphabet) error {

@@ -2,7 +2,7 @@ package solver
 
 import (
 	"fmt"
-	equation "github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"math"
 	"math/rand"
@@ -23,6 +23,7 @@ type Solver struct {
 	dotWriter     DotWriter
 	printOptions  PrintOptions
 	solveOptions  SolveOptions
+	simpifier     Simplifier
 }
 
 func (solver *Solver) Init(constantsAlph string, varsAlph string, equation string,
@@ -204,6 +205,10 @@ func (solver *Solver) solveEquation(equation equation.Equation) (time.Duration, 
 	err = solver.dotWriter.EndDOTDescription(solver.printOptions.Png)
 	if err != nil {
 		return measuredTime, fmt.Errorf("error writing DOT description: %v", err)
+	}
+	err = solver.simpifier.Simplify(tree)
+	if err != nil {
+		return measuredTime, fmt.Errorf("error simplifing eq: %v", err)
 	}
 	return measuredTime, nil
 }
@@ -515,6 +520,7 @@ func (solver *Solver) createFalseNode(node *Node) error {
 }
 
 func (solver *Solver) createFalseNodeWLabel(node *Node, label string) error {
+	node.SetHasFalseChildren()
 	var err error
 	falseNode := &FalseNode{
 		number: "F_" + node.number,
@@ -536,6 +542,7 @@ func (solver *Solver) createFalseNodeWLabel(node *Node, label string) error {
 }
 
 func (solver *Solver) createTrueNode(node *Node) error {
+	node.SetHasTrueChildren()
 	var err error
 	trueNode := &TrueNode{
 		number: "T_" + node.number,
@@ -577,6 +584,8 @@ func (solver *Solver) solve(node *Node) error {
 
 	hasBeen, tr := checkHasBeen(node)
 	if hasBeen {
+		tr.SetHasBackCycle()
+		node.SetChildren([]*Node{tr})
 		err = solver.dotWriter.WriteDottedEdge(node, tr)
 		if err != nil {
 			return fmt.Errorf("error writing dotted edge: %v", err)
@@ -810,8 +819,9 @@ func (solver *Solver) solve(node *Node) error {
 		if err != nil {
 			return fmt.Errorf("error solving for child: %v", err)
 		}
-		node.childrenSubVars[child.substitution.LeftPart()] = true
+		node.AddSubstituteVar(child.substitution.LeftPart())
 	}
+	node.FillHelpMapFromChildren()
 
 	return nil
 }
