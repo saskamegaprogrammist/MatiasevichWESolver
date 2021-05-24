@@ -4,8 +4,17 @@ Matiasevich word equations solver
 
 ### flags:
 
+- use_eq_split - 
+*boolean* use splitting equations by equidecomposability
+
+- use_length_analysis - 
+*boolean* use length analysis
+
 - full_graph - 
 *boolean* create full graph description
+
+- full_system - 
+*boolean* create full graph description for every equation in system
 
 - input_file - 
 *string* full path to input file with equation description
