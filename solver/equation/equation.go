@@ -18,6 +18,20 @@ func (equation *Equation) IsEmpty() bool {
 	return equation.LeftPart.Length == 0 && equation.RightPart.Length == 0
 }
 
+func (equation *Equation) Copy() Equation {
+	newEq := Equation{}
+	newEq.LeftPart = equation.LeftPart.Copy()
+	newEq.RightPart = equation.RightPart.Copy()
+	newEq.isEquidecomposable = equation.isEquidecomposable
+	return newEq
+}
+
+func NewEquation(leftPart []symbol.Symbol, rightPart []symbol.Symbol) Equation {
+	var eq Equation
+	eq.NewFromParts(leftPart, rightPart)
+	return eq
+}
+
 func (equation *Equation) New() {
 	equation.LeftPart.New()
 	equation.RightPart.New()
@@ -454,7 +468,7 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 }
 
 func (equation *Equation) Reduce() {
-	equation.reduceEmpty()
+	equation.reduceEmptyFromBeginning()
 	minLen := standart.Min(equation.LeftPart.Length, equation.RightPart.Length)
 	i := 0
 	for ; i < minLen; i++ {
@@ -470,10 +484,10 @@ func (equation *Equation) Reduce() {
 		equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
 		equation.LeftPart.Length -= i
 	}
-	equation.reduceEmpty()
+	equation.reduceEmptyFromBeginning()
 }
 
-func (equation *Equation) reduceEmpty() {
+func (equation *Equation) reduceEmptyFromBeginning() {
 	i := 0
 	if equation.LeftPart.Length > 1 {
 		for ; i < equation.LeftPart.Length; i++ {
@@ -498,6 +512,29 @@ func (equation *Equation) reduceEmpty() {
 			equation.RightPart.Length -= i
 		}
 	}
+}
+
+func (equation *Equation) FullReduceEmpty() {
+	var equationLeftPart = make([]symbol.Symbol, 0)
+	var equationRightPart = make([]symbol.Symbol, 0)
+	if equation.LeftPart.Length > 1 {
+		for _, sym := range equation.LeftPart.Symbols {
+			if !symbol.IsEmpty(sym) {
+				equationLeftPart = append(equationLeftPart, sym)
+			}
+		}
+	}
+	if equation.RightPart.Length > 1 {
+		for _, sym := range equation.RightPart.Symbols {
+			if !symbol.IsEmpty(sym) {
+				equationRightPart = append(equationRightPart, sym)
+			}
+		}
+	}
+	equation.LeftPart.Symbols = equationLeftPart
+	equation.LeftPart.Length = len(equationLeftPart)
+	equation.RightPart.Symbols = equationRightPart
+	equation.RightPart.Length = len(equationRightPart)
 }
 
 func (equation *Equation) SplitByEquidecomposability() EqSystem {

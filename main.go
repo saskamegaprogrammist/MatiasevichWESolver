@@ -7,6 +7,7 @@ import (
 	"github.com/google/logger"
 	matlog "github.com/saskamegaprogrammist/MatiasevichWESolver/logger"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"os"
 	"sort"
 )
@@ -93,6 +94,7 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, cycleRange int,
 }
 
 func main() {
+	test()
 	matlog.LoggerSetup()
 	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis := parseFLags()
 
@@ -125,4 +127,13 @@ func main() {
 	} else {
 		process(os.Stdin, fullGraph, makePng, cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis)
 	}
+}
+
+func test() {
+	var arr []symbol.Symbol
+	var a = symbol.Var("a")
+	var a1 = symbol.Var("a")
+	arr = append(arr, a)
+	arr = append(arr, a1)
+	fmt.Println(arr[0] == arr[1])
 }

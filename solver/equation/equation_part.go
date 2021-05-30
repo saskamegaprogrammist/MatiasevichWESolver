@@ -12,6 +12,15 @@ func (eqPart *EqPart) New() {
 	eqPart.Structure.New()
 }
 
+func (eqPart *EqPart) Copy() EqPart {
+	newEqPart := EqPart{}
+	newEqPart.Symbols = make([]symbol.Symbol, eqPart.Length)
+	copy(newEqPart.Symbols, eqPart.Symbols)
+	newEqPart.Length = eqPart.Length
+	newEqPart.Structure = eqPart.Structure.Copy()
+	return newEqPart
+}
+
 func (eqPart *EqPart) NewFromSymbols(symbols []symbol.Symbol) {
 	eqPart.Length = len(symbols)
 	eqPart.Symbols = symbols

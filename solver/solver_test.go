@@ -21,6 +21,15 @@ var solveOptionsFinite = SolveOptions{
 	AlgorithmMode:              "Finite",
 	FullSystem:                 false,
 }
+
+var solveOptionsFiniteFullGraph = SolveOptions{
+	LengthAnalysis:             false,
+	SplitByEquidecomposability: false,
+	CycleRange:                 20,
+	FullGraph:                  true,
+	AlgorithmMode:              "Finite",
+	FullSystem:                 false,
+}
 var solveOptionsStandard = SolveOptions{
 	LengthAnalysis:             false,
 	SplitByEquidecomposability: false,

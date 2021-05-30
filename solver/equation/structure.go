@@ -3,6 +3,7 @@ package equation
 import (
 	"fmt"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/standart"
 )
 
 type Structure struct {
@@ -18,6 +19,20 @@ func (str *Structure) New() {
 	str.letters = make(map[symbol.Symbol]int)
 	str.consts = make(map[symbol.Symbol]int)
 	str.vars = make(map[symbol.Symbol]int)
+}
+
+func (str *Structure) Copy() Structure {
+	newStructure := Structure{}
+	newStructure.letters = make(map[symbol.Symbol]int)
+	standart.CopySymbolIntMap(&str.letters, &newStructure.letters)
+	newStructure.consts = make(map[symbol.Symbol]int)
+	standart.CopySymbolIntMap(&str.consts, &newStructure.consts)
+	newStructure.vars = make(map[symbol.Symbol]int)
+	standart.CopySymbolIntMap(&str.vars, &newStructure.vars)
+	newStructure.constsLen = str.constsLen
+	newStructure.lettersLen = str.lettersLen
+	newStructure.varsLen = str.varsLen
+	return newStructure
 }
 
 func (str *Structure) Add(symb symbol.Symbol) {

@@ -7,6 +7,18 @@ type Substitution struct {
 	rightPart []symbol.Symbol
 }
 
+func (s *Substitution) Copy() Substitution {
+	newSubst := Substitution{}
+	newSubst.leftPart = s.leftPart
+	newSubst.rightPart = make([]symbol.Symbol, len(s.rightPart))
+	copy(newSubst.rightPart, s.rightPart)
+	return newSubst
+}
+
+func (s *Substitution) SubstitutesToEmpty() bool {
+	return len(s.rightPart) == 1 && symbol.IsEmpty(s.rightPart[0])
+}
+
 func (s *Substitution) LeftPart() symbol.Symbol {
 	return s.leftPart
 }

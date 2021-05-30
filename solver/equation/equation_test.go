@@ -518,3 +518,53 @@ func TestEquation_SplitByEquidecomposability_Consts(t *testing.T) {
 		}
 	}
 }
+
+func TestEquation_CheckSameness(t *testing.T) {
+	var err error
+	var eq1, eq2, eq3, eq4 Equation
+	err = eq1.Init("x a b = b y", &constAlphNew, &varsAlphNew)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.Errorf("TestEquation_CheckSameness failed: error should be nil")
+		return
+	}
+	err = eq2.Init("x a b = b y", &constAlphNew, &varsAlphNew)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.Errorf("TestEquation_CheckSameness failed: error should be nil")
+		return
+	}
+
+	err = eq3.Init("x $ a b = b y", &constAlphNew, &varsAlphNew)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.Errorf("TestEquation_CheckSameness failed: error should be nil")
+		return
+	}
+
+	err = eq4.Init("x = b", &constAlphNew, &varsAlphNew)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.Errorf("TestEquation_CheckSameness failed: error should be nil")
+		return
+	}
+
+	var same bool
+	same = eq1.CheckSameness(&eq2)
+	if !same {
+		t.Errorf("TestEquation_CheckSameness failed: eq1 and eq2 should be the same")
+		return
+	}
+
+	same = eq1.CheckSameness(&eq3)
+	if !same {
+		t.Errorf("TestEquation_CheckSameness failed: eq1 and eq3 should be the same")
+		return
+	}
+
+	same = eq1.CheckSameness(&eq4)
+	if same {
+		t.Errorf("TestEquation_CheckSameness failed: eq1 and eq4 should not be the same")
+		return
+	}
+}

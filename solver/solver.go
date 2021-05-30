@@ -206,7 +206,7 @@ func (solver *Solver) solveEquation(equation equation.Equation) (time.Duration, 
 	if err != nil {
 		return measuredTime, fmt.Errorf("error writing DOT description: %v", err)
 	}
-	err = solver.simpifier.Simplify(tree)
+	err = solver.simpifier.Simplify(&tree)
 	if err != nil {
 		return measuredTime, fmt.Errorf("error simplifing eq: %v", err)
 	}
@@ -584,8 +584,9 @@ func (solver *Solver) solve(node *Node) error {
 
 	hasBeen, tr := checkHasBeen(node)
 	if hasBeen {
-		tr.SetHasBackCycle()
+		node.SetHasBackCycle()
 		node.SetChildren([]*Node{tr})
+		tr.AddParentFromBackCycle(node)
 		err = solver.dotWriter.WriteDottedEdge(node, tr)
 		if err != nil {
 			return fmt.Errorf("error writing dotted edge: %v", err)
@@ -819,9 +820,12 @@ func (solver *Solver) solve(node *Node) error {
 		if err != nil {
 			return fmt.Errorf("error solving for child: %v", err)
 		}
-		node.AddSubstituteVar(child.substitution.LeftPart())
 	}
 	node.FillHelpMapFromChildren()
+	node.FillSubstituteMapsFromChildren()
+	for _, child := range node.children {
+		node.AddSubstituteVar(child.substitution.LeftPart())
+	}
 
 	return nil
 }
