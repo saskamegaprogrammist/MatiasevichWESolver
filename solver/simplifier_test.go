@@ -20,7 +20,7 @@ func TestSimplifier_Simplify_First(t *testing.T) {
 		return
 	}
 	simplifier.InitWithSolver(&solver)
-	tree := NewTree("0", solver.equation)
+	tree := NewTreeWEquation("0", solver.equation)
 	err = simplifier.Simplify(&tree)
 	if err != nil {
 		t.Errorf("TestSimplifier_Simplify_First error should be nil: %v", fmt.Sprintf("error simplifing equation: %v \n", err))
@@ -52,7 +52,7 @@ func TestSimplifier_Simplify_Second(t *testing.T) {
 		return
 	}
 	simplifier.InitWithSolver(&solver)
-	tree := NewTree("0", solver.equation)
+	tree := NewTreeWEquation("0", solver.equation)
 	err = simplifier.Simplify(&tree)
 	if err != nil {
 		t.Errorf("TestSimplifier_Simplify_Second error should be nil: %v", fmt.Sprintf("error simplifing equation: %v \n", err))
@@ -88,7 +88,7 @@ func TestSimplifier_Simplify_Symbols_1(t *testing.T) {
 		return
 	}
 	simplifier.InitWithSolver(&solver)
-	tree := NewTree("0", firstSymbolEquation)
+	tree := NewTreeWEquation("0", firstSymbolEquation)
 	err = simplifier.Simplify(&tree)
 	if err != nil {
 		t.Errorf("TestSimplifier_Simplify_Symbols_1 error should be nil: %v", fmt.Sprintf("error simplifing equation: %v \n", err))
@@ -125,7 +125,7 @@ func TestSimplifier_Simplify_Symbols_2(t *testing.T) {
 		return
 	}
 	simplifier.InitWithSolver(&solver)
-	tree := NewTree("0", secondSymbolEquation)
+	tree := NewTreeWEquation("0", secondSymbolEquation)
 	err = simplifier.Simplify(&tree)
 	if err != nil {
 		t.Errorf("TestSimplifier_Simplify_Symbols_2 error should be nil: %v", fmt.Sprintf("error simplifing equation: %v \n", err))

@@ -74,15 +74,7 @@ func (dotWriter *DotWriter) WriteLabelEdge(from *Node, to *Node, symbol *symbol.
 	return nil
 }
 
-func (dotWriter *DotWriter) WriteLabelEdgeSystem(from *NodeSystem, to *NodeSystem, symbol *symbol.Symbol, newSymbols []symbol.Symbol) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[label=\"%s\"];\n", from.number, to.number, getEdgeLabel(symbol, newSymbols)))
-	if err != nil {
-		return fmt.Errorf("error describing edge: %v", err)
-	}
-	return nil
-}
-
-func (dotWriter *DotWriter) WriteLabelEdgeBoldSystem(from *NodeSystem, to *NodeSystem) error {
+func (dotWriter *DotWriter) WriteLabelEdgeBold(from *Node, to *Node) error {
 	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[style=bold][label=splitting];\n", from.number, to.number))
 	if err != nil {
 		return fmt.Errorf("error describing edge: %v", err)
@@ -106,23 +98,7 @@ func (dotWriter *DotWriter) WriteInfoEdgeWithLabel(from *Node, to *FalseNode) er
 	return nil
 }
 
-func (dotWriter *DotWriter) WriteInfoEdgeSystem(from *NodeSystem, to InfoNode) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s;\n", from.number, to.GetNumber()))
-	if err != nil {
-		return fmt.Errorf("error describing edge: %v", err)
-	}
-	return nil
-}
-
 func (dotWriter *DotWriter) WriteDottedEdge(from *Node, to *Node) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s [style=dotted];\n", from.number, to.number))
-	if err != nil {
-		return fmt.Errorf("error describing edge: %v", err)
-	}
-	return nil
-}
-
-func (dotWriter *DotWriter) WriteDottedEdgeSystem(from *NodeSystem, to *NodeSystem) error {
 	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s [style=dotted];\n", from.number, to.number))
 	if err != nil {
 		return fmt.Errorf("error describing edge: %v", err)
@@ -132,14 +108,6 @@ func (dotWriter *DotWriter) WriteDottedEdgeSystem(from *NodeSystem, to *NodeSyst
 
 func (dotWriter *DotWriter) WriteNode(node *Node) error {
 	err := dotWriter.writer.Write(fmt.Sprintf("    %s [label=\"%s\"];\n", node.number, node.value.String()))
-	if err != nil {
-		return fmt.Errorf("error describing node: %v", err)
-	}
-	return nil
-}
-
-func (dotWriter *DotWriter) WriteNodeSystem(nodeSystem *NodeSystem) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("    %s [label=\"%s\"];\n", nodeSystem.number, nodeSystem.Value.String()))
 	if err != nil {
 		return fmt.Errorf("error describing node: %v", err)
 	}

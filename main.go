@@ -2,15 +2,11 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"fmt"
-	"github.com/goccy/go-graphviz"
 	"github.com/google/logger"
 	matlog "github.com/saskamegaprogrammist/MatiasevichWESolver/logger"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver"
-	"io/ioutil"
-	"log"
 	"os"
 	"sort"
 )
@@ -132,36 +128,4 @@ func main() {
 	} else {
 		process(os.Stdin, fullGraph, makePng, makeDot, cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis)
 	}
-}
-
-func test() {
-	b, err := ioutil.ReadFile("output_files/eq_graph_Standard_x A = B x .dot")
-	if err != nil {
-		fmt.Printf("error reading dot file: %v", err)
-	}
-	graph, err := graphviz.ParseBytes(b)
-	if err != nil {
-		fmt.Printf("error parsing dot file: %v", err)
-	}
-
-	b1, err := ioutil.ReadFile("output_files/eq_graph_Standard_x A y B = A x x A .dot")
-	if err != nil {
-		fmt.Printf("error reading dot file: %v", err)
-	}
-	graph1, err := graphviz.ParseBytes(b1)
-	if err != nil {
-		fmt.Printf("error parsing dot file: %v", err)
-	}
-	f, _ := os.Create("test.png")
-	var buf, buf1 bytes.Buffer
-	if err := graphviz.New().Render(graph, graphviz.PNG, &buf); err != nil {
-		log.Fatal(err)
-	}
-	a := bufio.NewWriter(f)
-	_, _ = buf.WriteTo(a)
-
-	if err := graphviz.New().Render(graph1, graphviz.PNG, &buf1); err != nil {
-		log.Fatal(err)
-	}
-	_, _ = buf1.WriteTo(a)
 }

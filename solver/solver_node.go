@@ -15,7 +15,7 @@ type Node struct {
 	parent                  *Node
 	parentsFromBackCycles   []*Node
 	children                []*Node
-	value                   equation.Equation
+	value                   equation.EquationsSystem
 	simplified              equation.EquationsSystem
 	subgraphRoot            bool
 	infoChild               InfoNode
@@ -23,21 +23,7 @@ type Node struct {
 	letterSubstitutions     []*LetterSusbstitution
 }
 
-func (node *Node) Copy(original *Node) {
-	// not copying links to parent and children !!!
-	node.number = original.number
-	node.substitution = original.substitution.Copy()
-	node.value = original.value.Copy()
-	node.simplified = original.simplified.Copy()
-	node.helpMap = make(map[int]bool)
-	//standart.CopyIntBoolMap(&original.helpMap, &node.helpMap)
-	node.childrenSubstituteVars = make(map[symbol.Symbol]int)
-	//standart.CopySymbolIntMap(&node.childrenSubstituteVars, &newNode.childrenSubstituteVars)
-	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
-	//standart.CopySymbolIntMap(&node.subgraphsSubstituteVars, &newNode.subgraphsSubstituteVars)
-	node.letterSubstitutions = make([]*LetterSusbstitution, 0)
-
-}
+// common setters an getters
 
 func (node *Node) LetterSubstitutions() []*LetterSusbstitution {
 	return node.letterSubstitutions
@@ -107,34 +93,6 @@ func (node *Node) Print() {
 	fmt.Println()
 }
 
-func (node *Node) FillHelpMapFromChildren() {
-	node.helpMap[HAS_TRUE] = false
-	node.helpMap[HAS_FALSE] = false
-	node.helpMap[HAS_BACK_CYCLE] = false
-
-	for _, ch := range node.children {
-		node.helpMap[HAS_TRUE] = node.helpMap[HAS_TRUE] || ch.helpMap[HAS_TRUE]
-		node.helpMap[HAS_FALSE] = node.helpMap[HAS_FALSE] || ch.helpMap[HAS_FALSE]
-		node.helpMap[HAS_BACK_CYCLE] = node.helpMap[HAS_BACK_CYCLE] || ch.helpMap[HAS_BACK_CYCLE]
-	}
-}
-
-func (node *Node) FillSubstituteMapsFromChildren() {
-	for _, ch := range node.children {
-		for k, v := range ch.childrenSubstituteVars {
-			node.childrenSubstituteVars[k] += v
-		}
-		for k, v := range ch.subgraphsSubstituteVars {
-			node.subgraphsSubstituteVars[k] += v
-		}
-	}
-}
-
-func (node *Node) ClearSubstituteMapsFromChildren() {
-	node.childrenSubstituteVars = make(map[symbol.Symbol]int)
-	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
-}
-
 func (node *Node) SetIsSubgraphRoot() {
 	node.subgraphRoot = true
 }
@@ -145,6 +103,34 @@ func (node *Node) UnsetIsSubgraphRoot() {
 
 func (node *Node) IsSubgraphRoot() bool {
 	return node.subgraphRoot
+}
+
+func (node *Node) SetChildren(children []*Node) {
+	if children != nil {
+		node.children = children
+	}
+}
+
+func (node *Node) AddParentFromBackCycle(child *Node) {
+	node.parentsFromBackCycles = append(node.parentsFromBackCycles, child)
+}
+
+func (node *Node) SetSimplifiedRepresentation(es equation.EquationsSystem) {
+	node.simplified = es
+}
+
+// working with help map
+
+func (node *Node) FillHelpMapFromChildren() {
+	node.helpMap[HAS_TRUE] = false
+	node.helpMap[HAS_FALSE] = false
+	node.helpMap[HAS_BACK_CYCLE] = false
+
+	for _, ch := range node.children {
+		node.helpMap[HAS_TRUE] = node.helpMap[HAS_TRUE] || ch.helpMap[HAS_TRUE]
+		node.helpMap[HAS_FALSE] = node.helpMap[HAS_FALSE] || ch.helpMap[HAS_FALSE]
+		node.helpMap[HAS_BACK_CYCLE] = node.helpMap[HAS_BACK_CYCLE] || ch.helpMap[HAS_BACK_CYCLE]
+	}
 }
 
 func (node *Node) SetHasTrueChildren() {
@@ -190,14 +176,22 @@ func (node *Node) HasBackCycle() bool {
 	return node.helpMap[HAS_BACK_CYCLE]
 }
 
-func (node *Node) SetChildren(children []*Node) {
-	if children != nil {
-		node.children = children
+// working with substitutions for simplification
+
+func (node *Node) FillSubstituteMapsFromChildren() {
+	for _, ch := range node.children {
+		for k, v := range ch.childrenSubstituteVars {
+			node.childrenSubstituteVars[k] += v
+		}
+		for k, v := range ch.subgraphsSubstituteVars {
+			node.subgraphsSubstituteVars[k] += v
+		}
 	}
 }
 
-func (node *Node) AddParentFromBackCycle(child *Node) {
-	node.parentsFromBackCycles = append(node.parentsFromBackCycles, child)
+func (node *Node) ClearSubstituteMapsFromChildren() {
+	node.childrenSubstituteVars = make(map[symbol.Symbol]int)
+	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
 }
 
 func (node *Node) AddSubstituteVar(subVar symbol.Symbol) {
@@ -205,10 +199,6 @@ func (node *Node) AddSubstituteVar(subVar symbol.Symbol) {
 	if node.HasSingleSubstituteVar() {
 		node.subgraphsSubstituteVars[subVar]++
 	}
-}
-
-func (node *Node) SetSimplifiedRepresentation(es equation.EquationsSystem) {
-	node.simplified = es
 }
 
 func (node *Node) RemoveSubstituteVar(subVar symbol.Symbol, len int) {
@@ -247,7 +237,42 @@ func (node *Node) SubstituteVar() (symbol.Symbol, error) {
 	return node.children[0].substitution.LeftPart(), nil
 }
 
-func NewNode(sub equation.Substitution, number string, parent *Node, val equation.Equation) Node {
+// copying node
+
+func (node *Node) Copy(original *Node) {
+	// not copying links to parent and children !!!
+	node.number = original.number
+	node.substitution = original.substitution.Copy()
+	node.value = original.value.Copy()
+	node.simplified = original.simplified.Copy()
+	node.helpMap = make(map[int]bool)
+	//standart.CopyIntBoolMap(&original.helpMap, &node.helpMap)
+	node.childrenSubstituteVars = make(map[symbol.Symbol]int)
+	//standart.CopySymbolIntMap(&node.childrenSubstituteVars, &newNode.childrenSubstituteVars)
+	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
+	//standart.CopySymbolIntMap(&node.subgraphsSubstituteVars, &newNode.subgraphsSubstituteVars)
+	node.letterSubstitutions = make([]*LetterSusbstitution, 0)
+
+}
+
+// nodes construction
+
+func NewNodeWEquation(sub equation.Substitution, number string, parent *Node, val equation.Equation) Node {
+	return Node{
+		number:                  number,
+		substitution:            sub,
+		parent:                  parent,
+		children:                make([]*Node, 0),
+		parentsFromBackCycles:   make([]*Node, 0),
+		value:                   equation.NewSingleEquation(val),
+		childrenSubstituteVars:  make(map[symbol.Symbol]int),
+		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
+		helpMap:                 make(map[int]bool),
+		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+	}
+}
+
+func NewNodeWEquationsSystem(sub equation.Substitution, number string, parent *Node, val equation.EquationsSystem) Node {
 	return Node{
 		number:                  number,
 		substitution:            sub,
@@ -262,7 +287,20 @@ func NewNode(sub equation.Substitution, number string, parent *Node, val equatio
 	}
 }
 
-func NewTree(number string, val equation.Equation) Node {
+func NewTreeWEquation(number string, val equation.Equation) Node {
+	return Node{
+		number:                  number,
+		children:                make([]*Node, 0),
+		parentsFromBackCycles:   make([]*Node, 0),
+		value:                   equation.NewSingleEquation(val),
+		childrenSubstituteVars:  make(map[symbol.Symbol]int),
+		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
+		helpMap:                 make(map[int]bool),
+		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+	}
+}
+
+func NewTreeWEquationsSystem(number string, val equation.EquationsSystem) Node {
 	return Node{
 		number:                  number,
 		children:                make([]*Node, 0),
@@ -285,6 +323,8 @@ func EmptyNode() Node {
 		letterSubstitutions:     make([]*LetterSusbstitution, 0),
 	}
 }
+
+//-----------------------------------------------------------------------------------
 
 type NodeSystem struct {
 	number   string

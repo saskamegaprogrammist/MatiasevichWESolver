@@ -34,7 +34,7 @@ func (s *Simplifier) Simplify(node *Node) error {
 		}
 	}
 
-	if len(node.value.Letters()) != 0 {
+	if len(node.value.Equation().Letters()) != 0 {
 		var conjunctions = make([]equation.EquationsSystem, 0)
 		var resSystem, nodeSystem equation.EquationsSystem
 		newNodes, eqs, err := s.checkRulesForLetters(node)
@@ -71,7 +71,7 @@ func (s *Simplifier) simplifyNode(node *Node) (equation.EquationsSystem, error) 
 	var resSystem equation.EquationsSystem
 	symbols := standart.SymbolArrayFromIntMap(node.subgraphsSubstituteVars)
 	if len(symbols) == 0 {
-		return equation.NewSingleEquation(node.value), nil
+		return equation.NewSingleEquation(*(node.value.Equation())), nil
 	}
 	subgraphSymbol := symbols[len(symbols)-1]
 	resSystem, err = s.simplify(node, subgraphSymbol)
@@ -103,7 +103,7 @@ func (s *Simplifier) checkTrueNodesWoLetterSubstitutions(node *Node) (bool, []Le
 
 func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equation, error) {
 	var err error
-	letters := node.value.Letters()
+	letters := node.value.Equation().Letters()
 	var newLetterSubstitutions []LetterSusbstitution
 	hasEmpty, nonEmpty := s.checkTrueNodesWoLetterSubstitutions(node)
 
@@ -116,8 +116,8 @@ func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equ
 	var newNodes []*Node
 	var eqs = make([][]equation.Equation, 0)
 	for _, nls := range newLetterSubstitutions {
-		newEq := nls.NewEquation(&node.value)
-		newNode := NewTree("0", newEq)
+		newEq := nls.NewEquation(node.value.Equation())
+		newNode := NewTreeWEquation("0", newEq)
 		err = s.solver.solve(&newNode)
 		if err != nil {
 			return newNodes, eqs, fmt.Errorf("error solving node: %v", err)
@@ -316,7 +316,7 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 	if node.LeadsToBackCycle() {
 		tr := copyNode.parent
 		for tr != nil {
-			if node.value.CheckSameness(&tr.value) {
+			if node.value.Equation().CheckSameness(tr.value.Equation()) {
 				break
 			}
 			tr = tr.parent

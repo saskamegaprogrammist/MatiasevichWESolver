@@ -12,6 +12,13 @@ type EquationsSystem struct {
 	systemType int
 }
 
+func (es *EquationsSystem) Size() int {
+	if es.IsSingleEquation() {
+		return 1
+	}
+	return len(es.compounds)
+}
+
 func (es *EquationsSystem) Compounds() []EquationsSystem {
 	return es.compounds
 }
@@ -25,6 +32,13 @@ func (es *EquationsSystem) GetEquations() []Equation {
 		equations = append(equations, c.GetEquations()...)
 	}
 	return equations
+}
+
+func (es *EquationsSystem) Equation() *Equation {
+	if es.IsSingleEquation() {
+		return &es.value
+	}
+	return es.compounds[0].Equation()
 }
 
 func (es *EquationsSystem) Copy() EquationsSystem {
@@ -70,6 +84,30 @@ func (es *EquationsSystem) IsDisjunction() bool {
 
 func (es *EquationsSystem) IsConjunction() bool {
 	return es.systemType == CONJUNCTION
+}
+
+func (es *EquationsSystem) CheckInequality() bool {
+	if es.IsSingleEquation() {
+		return es.value.CheckInequality()
+	}
+	for _, eq := range es.compounds {
+		if eq.CheckInequality() {
+			return true
+		}
+	}
+	return false
+}
+
+func (es *EquationsSystem) CheckEquality() bool {
+	if es.IsSingleEquation() {
+		return es.value.CheckEquality()
+	}
+	for _, eq := range es.compounds {
+		if !eq.CheckEquality() {
+			return false
+		}
+	}
+	return true
 }
 
 func (es *EquationsSystem) HasEqSystem(system EquationsSystem) bool {
