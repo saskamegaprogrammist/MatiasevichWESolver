@@ -48,6 +48,7 @@ var solveOptionsStandardWLength = SolveOptions{
 	FullSystem:                 false,
 }
 var printOptions = PrintOptions{
+	Dot:       false,
 	Png:       false,
 	OutputDir: "../output_files",
 }
@@ -227,3 +228,35 @@ func Test_Solve_5(t *testing.T) {
 		}
 	}
 }
+
+//var testEq = equation.NewEquation([]symbol.Symbol{symbol.LetterVar("c"),
+//	symbol.Const("A"), symbol.Const("B"), symbol.Var("x")}, []symbol.Symbol{symbol.Var("x"),
+//	symbol.Const("B"), symbol.LetterVar("c"), symbol.Const("A")})
+//
+//func Test_Solve_6(t *testing.T) {
+//	var solver Solver
+//	err := solver.InitWoEquation("{A, B}", "{x, y}", PrintOptions{
+//		Png:       true,
+//		Dot:       true,
+//		OutputDir: "../output_files",
+//	}, solveOptionsFiniteFullGraph)
+//	if err != nil {
+//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error initializing solver: %v \n", err))
+//		return
+//	}
+//	err = solver.setLetterAlphabet("{c, r, t}")
+//	if err != nil {
+//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error setting letters alphabet: %v \n", err))
+//		return
+//	}
+//	err = solver.SetEquation(testEq)
+//	if err != nil {
+//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error setting letters alphabet: %v \n", err))
+//		return
+//	}
+//
+//	result, _, _ := solver.Solve()
+//	if result != falseStr {
+//		t.Errorf("Test_Solve_6 result should be: %s, but got: %s", falseStr, result)
+//	}
+//}

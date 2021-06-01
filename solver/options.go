@@ -7,9 +7,11 @@ type SolveOptions struct {
 	FullGraph                  bool
 	FullSystem                 bool
 	AlgorithmMode              string
+	SaveLettersSubstitutions   bool
 }
 
 type PrintOptions struct {
 	Png       bool
+	Dot       bool
 	OutputDir string
 }

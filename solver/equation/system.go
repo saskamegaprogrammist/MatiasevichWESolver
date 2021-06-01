@@ -16,6 +16,17 @@ func (es *EquationsSystem) Compounds() []EquationsSystem {
 	return es.compounds
 }
 
+func (es *EquationsSystem) GetEquations() []Equation {
+	var equations = make([]Equation, 0)
+	if es.IsSingleEquation() {
+		return []Equation{es.value}
+	}
+	for _, c := range es.compounds {
+		equations = append(equations, c.GetEquations()...)
+	}
+	return equations
+}
+
 func (es *EquationsSystem) Copy() EquationsSystem {
 	newEqSys := EquationsSystem{}
 	newEqSys.value = es.value.Copy()

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
-	"github.com/saskamegaprogrammist/MatiasevichWESolver/standart"
 )
 
 type Node struct {
@@ -19,6 +18,9 @@ type Node struct {
 	value                   equation.Equation
 	simplified              equation.EquationsSystem
 	subgraphRoot            bool
+	infoChild               InfoNode
+	unfolded                bool
+	letterSubstitutions     []*LetterSusbstitution
 }
 
 func (node *Node) Copy(original *Node) {
@@ -28,11 +30,33 @@ func (node *Node) Copy(original *Node) {
 	node.value = original.value.Copy()
 	node.simplified = original.simplified.Copy()
 	node.helpMap = make(map[int]bool)
-	standart.CopyIntBoolMap(&original.helpMap, &node.helpMap)
+	//standart.CopyIntBoolMap(&original.helpMap, &node.helpMap)
 	node.childrenSubstituteVars = make(map[symbol.Symbol]int)
 	//standart.CopySymbolIntMap(&node.childrenSubstituteVars, &newNode.childrenSubstituteVars)
 	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
 	//standart.CopySymbolIntMap(&node.subgraphsSubstituteVars, &newNode.subgraphsSubstituteVars)
+	node.letterSubstitutions = make([]*LetterSusbstitution, 0)
+
+}
+
+func (node *Node) LetterSubstitutions() []*LetterSusbstitution {
+	return node.letterSubstitutions
+}
+
+func (node *Node) SetWasUnfolded() {
+	node.unfolded = true
+}
+
+func (node *Node) WasUnfolded() bool {
+	return node.unfolded
+}
+
+func (node *Node) HasInfoChild() bool {
+	return node.infoChild != nil
+}
+
+func (node *Node) InfoChild() InfoNode {
+	return node.infoChild
 }
 
 func (node *Node) Children() []*Node {
@@ -84,19 +108,14 @@ func (node *Node) Print() {
 }
 
 func (node *Node) FillHelpMapFromChildren() {
+	node.helpMap[HAS_TRUE] = false
+	node.helpMap[HAS_FALSE] = false
+	node.helpMap[HAS_BACK_CYCLE] = false
+
 	for _, ch := range node.children {
-		if len(node.helpMap) == RANGE {
-			break
-		}
-		if !node.helpMap[HAS_TRUE] && ch.helpMap[HAS_TRUE] {
-			node.helpMap[HAS_TRUE] = true
-		}
-		if !node.helpMap[HAS_FALSE] && ch.helpMap[HAS_FALSE] {
-			node.helpMap[HAS_FALSE] = true
-		}
-		if !node.helpMap[HAS_BACK_CYCLE] && ch.helpMap[HAS_BACK_CYCLE] {
-			node.helpMap[HAS_BACK_CYCLE] = true
-		}
+		node.helpMap[HAS_TRUE] = node.helpMap[HAS_TRUE] || ch.helpMap[HAS_TRUE]
+		node.helpMap[HAS_FALSE] = node.helpMap[HAS_FALSE] || ch.helpMap[HAS_FALSE]
+		node.helpMap[HAS_BACK_CYCLE] = node.helpMap[HAS_BACK_CYCLE] || ch.helpMap[HAS_BACK_CYCLE]
 	}
 }
 
@@ -132,6 +151,10 @@ func (node *Node) SetHasTrueChildren() {
 	node.helpMap[HAS_TRUE] = true
 }
 
+func (node *Node) SetDoesntHaveTrueChildren() {
+	node.helpMap[HAS_TRUE] = false
+}
+
 func (node *Node) SetHasFalseChildren() {
 	node.helpMap[HAS_FALSE] = true
 }
@@ -153,9 +176,12 @@ func (node *Node) HasOnlyFalseChildren() bool {
 }
 
 func (node *Node) HasFalseChildrenAndBackCycles() bool {
-	return node.helpMap[HAS_FALSE] && node.helpMap[HAS_BACK_CYCLE] && !node.helpMap[HAS_TRUE]
+	return (node.helpMap[HAS_FALSE] || node.helpMap[HAS_BACK_CYCLE]) && !node.helpMap[HAS_TRUE]
 }
 
+func (node *Node) HasTrueChildrenAndBackCycles() bool {
+	return (node.helpMap[HAS_TRUE] || node.helpMap[HAS_BACK_CYCLE]) && !node.helpMap[HAS_FALSE]
+}
 func (node *Node) HasOnlyTrueChildren() bool {
 	return node.helpMap[HAS_TRUE] && !node.helpMap[HAS_FALSE]
 }
@@ -232,6 +258,7 @@ func NewNode(sub equation.Substitution, number string, parent *Node, val equatio
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
+		letterSubstitutions:     make([]*LetterSusbstitution, 0),
 	}
 }
 
@@ -244,6 +271,7 @@ func NewTree(number string, val equation.Equation) Node {
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
+		letterSubstitutions:     make([]*LetterSusbstitution, 0),
 	}
 }
 
@@ -254,6 +282,7 @@ func EmptyNode() Node {
 		children:                make([]*Node, 0),
 		parentsFromBackCycles:   make([]*Node, 0),
 		helpMap:                 make(map[int]bool),
+		letterSubstitutions:     make([]*LetterSusbstitution, 0),
 	}
 }
 

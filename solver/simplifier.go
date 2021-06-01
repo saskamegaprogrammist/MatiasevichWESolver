@@ -8,24 +8,247 @@ import (
 )
 
 type Simplifier struct {
+	solver *Solver
+}
+
+func (s *Simplifier) Init(constantsAlph string, varsAlph string, eq string,
+	printOptions PrintOptions, solveOptions SolveOptions) error {
+	var err error
+	err = s.solver.Init(constantsAlph, varsAlph, eq, printOptions, solveOptions)
+	if err != nil {
+		return fmt.Errorf("error initing solver: %v", err)
+	}
+	return err
+}
+
+func (s *Simplifier) InitWithSolver(solver *Solver) {
+	s.solver = solver
 }
 
 func (s *Simplifier) Simplify(node *Node) error {
 	var err error
+	if !node.WasUnfolded() {
+		err = s.solver.solve(node)
+		if err != nil {
+			return fmt.Errorf("error solving node: %v", err)
+		}
+	}
+
+	if len(node.value.Letters()) != 0 {
+		var conjunctions = make([]equation.EquationsSystem, 0)
+		var resSystem, nodeSystem equation.EquationsSystem
+		newNodes, eqs, err := s.checkRulesForLetters(node)
+		if err != nil {
+			return fmt.Errorf("error checking rules for letters letters: %v", err)
+		}
+		for i, newNode := range newNodes {
+			nodeSystem, err = s.simplifyNode(newNode)
+			if err != nil {
+				return fmt.Errorf("error simplifying node with letters: %v", err)
+			}
+			newNode.simplified = nodeSystem
+			//nodeSystem.Print()
+
+			conjunctions = append(conjunctions, equation.NewConjunctionSystemFromEquations(append(eqs[i], nodeSystem.GetEquations()...)))
+		}
+		resSystem = equation.NewDisjunctionSystem(conjunctions)
+		node.simplified = resSystem
+		resSystem.Print()
+	} else {
+		var resSystem equation.EquationsSystem
+		resSystem, err = s.simplifyNode(node)
+		if err != nil {
+			return fmt.Errorf("error simplifying node without letters: %v", err)
+		}
+		node.simplified = resSystem
+		resSystem.Print()
+	}
+	return nil
+}
+
+func (s *Simplifier) simplifyNode(node *Node) (equation.EquationsSystem, error) {
+	var err error
+	var resSystem equation.EquationsSystem
 	symbols := standart.SymbolArrayFromIntMap(node.subgraphsSubstituteVars)
 	if len(symbols) == 0 {
-		return nil
+		return equation.NewSingleEquation(node.value), nil
 	}
 	subgraphSymbol := symbols[len(symbols)-1]
-	var resSystem equation.EquationsSystem
 	resSystem, err = s.simplify(node, subgraphSymbol)
 	if err != nil {
-		return fmt.Errorf("error during simplification: %v", err)
+		return resSystem, fmt.Errorf("error during simplification: %v", err)
 	}
-	node.simplified = resSystem
-	resSystem.Print()
+	return resSystem, nil
+}
 
-	return nil
+func (s *Simplifier) checkTrueNodesWoLetterSubstitutions(node *Node) (bool, []LetterSusbstitution) {
+	var nodesToEmpty = make([]*Node, 0)
+	var nonEmpty = make([]LetterSusbstitution, 0)
+	letterSubstitutions := node.LetterSubstitutions()
+	for _, ls := range letterSubstitutions {
+		if ls.HasNoSubstitutions() {
+			nodesToEmpty = append(nodesToEmpty, ls.nodeToTrue)
+		} else {
+			nonEmpty = append(nonEmpty, *ls)
+		}
+	}
+	if len(nodesToEmpty) > 0 {
+		for _, n := range nonEmpty {
+			s.removeTrueNodesWLetters(n.nodeToTrue)
+		}
+		return true, nonEmpty
+	}
+	return false, nonEmpty
+}
+
+func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equation, error) {
+	var err error
+	letters := node.value.Letters()
+	var newLetterSubstitutions []LetterSusbstitution
+	hasEmpty, nonEmpty := s.checkTrueNodesWoLetterSubstitutions(node)
+
+	if hasEmpty {
+		return []*Node{node}, [][]equation.Equation{{}}, nil
+	}
+
+	newLetterSubstitutions = s.checkEqualLetterSubstituions(nonEmpty, letters)
+
+	var newNodes []*Node
+	var eqs = make([][]equation.Equation, 0)
+	for _, nls := range newLetterSubstitutions {
+		newEq := nls.NewEquation(&node.value)
+		newNode := NewTree("0", newEq)
+		err = s.solver.solve(&newNode)
+		if err != nil {
+			return newNodes, eqs, fmt.Errorf("error solving node: %v", err)
+		}
+		s.checkTrueNodesWoLetterSubstitutions(&newNode)
+		newNodes = append(newNodes, &newNode)
+		eqs = append(eqs, nls.SubstitutionsAsEquations())
+	}
+	return newNodes, eqs, nil
+}
+
+func (s *Simplifier) checkEqualLetterSubstituions(l []LetterSusbstitution, letters []symbol.Symbol) []LetterSusbstitution {
+	var lsMaps = make([]map[symbol.Symbol]symbol.Symbol, 0)
+	var newL = make([]LetterSusbstitution, 0)
+	for _, l := range l {
+		lsMaps = append(lsMaps, s.createMapWithLetters(l, letters))
+	}
+	s.compareLetterSubstitutionMaps(lsMaps, &l, &newL)
+	return newL
+}
+
+func (s *Simplifier) compareLetterSubstitutionMaps(maps []map[symbol.Symbol]symbol.Symbol, oldL *[]LetterSusbstitution,
+	newL *[]LetterSusbstitution) {
+	var newLMap = make(map[int]bool)
+	var mapsLen = len(maps)
+	var needsDeletion bool
+	var linkToBigger *map[symbol.Symbol]symbol.Symbol
+	for i, m := range maps {
+		for j := i + 1; j < mapsLen; j++ {
+			needsDeletion, linkToBigger = s.compareLetterMaps(m, maps[j])
+			if !needsDeletion {
+				newLMap[i] = true
+				newLMap[j] = true
+			} else {
+				if linkToBigger == &maps[j] {
+					newLMap[i] = false
+					newLMap[j] = true
+				} else {
+					newLMap[i] = true
+					newLMap[j] = false
+				}
+			}
+		}
+	}
+	for i, v := range newLMap {
+		if v == true {
+			*newL = append(*newL, (*oldL)[i])
+		}
+	}
+}
+
+func (s *Simplifier) compareLetterMaps(fMap map[symbol.Symbol]symbol.Symbol,
+	sMap map[symbol.Symbol]symbol.Symbol) (bool, *map[symbol.Symbol]symbol.Symbol) {
+	var biggerSubst *map[symbol.Symbol]symbol.Symbol
+	for symbolKey, symbolVal := range fMap {
+		sVal := sMap[symbolKey]
+		if sVal == symbolVal {
+			continue
+		}
+		if symbol.IsConst(symbolVal) {
+			if symbol.IsConst(sVal) {
+				return false, nil
+			}
+			if symbol.IsLetter(sVal) {
+				if biggerSubst != nil && biggerSubst == &fMap {
+					return false, nil
+				}
+				biggerSubst = &sMap
+			}
+		} else {
+			if symbol.IsConst(sVal) {
+				return false, nil
+			}
+			if symbol.IsLetter(sVal) {
+				if biggerSubst != nil && biggerSubst == &sMap {
+					return false, nil
+				}
+				biggerSubst = &fMap
+			}
+		}
+	}
+	// two maps are equal, substitutions are equal, choosing any
+	if biggerSubst == nil {
+		biggerSubst = &fMap
+	}
+	return true, biggerSubst
+}
+
+func (s *Simplifier) unfoldMap(lMap *map[symbol.Symbol]symbol.Symbol, letters []symbol.Symbol) {
+	for _, letter := range letters {
+		val := (*lMap)[letter]
+		if val == nil {
+			(*lMap)[letter] = letter
+		} else {
+			(*lMap)[letter] = unfoldSymbol(val, lMap)
+		}
+	}
+}
+
+func unfoldSymbol(sym symbol.Symbol, lMap *map[symbol.Symbol]symbol.Symbol) symbol.Symbol {
+	if symbol.IsConst(sym) {
+		return sym
+	}
+	if symbol.IsLetter(sym) {
+		val := (*lMap)[sym]
+		if val == nil || val == sym {
+			return sym
+		}
+		(*lMap)[sym] = unfoldSymbol(val, lMap)
+	}
+	return sym
+}
+
+func (s *Simplifier) createMapWithLetters(ls LetterSusbstitution, letters []symbol.Symbol) map[symbol.Symbol]symbol.Symbol {
+	var lsMap = make(map[symbol.Symbol]symbol.Symbol)
+	for _, s := range ls.substitutions {
+		lsMap[s.LeftPart()] = s.RightPart()[0]
+	}
+	s.unfoldMap(&lsMap, letters)
+	return lsMap
+}
+
+func (s *Simplifier) removeTrueNodesWLetters(node *Node) {
+	node.infoChild = nil
+	node.SetDoesntHaveTrueChildren()
+	tr := node.parent
+
+	for tr != nil {
+		tr.FillHelpMapFromChildren()
+		tr = tr.parent
+	}
 }
 
 func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.EquationsSystem, error) {
@@ -43,6 +266,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range disjunctions {
+		disj.Print()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -73,6 +297,11 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 	var err error
 	copyNode.Copy(node)
 	if node.simplified.HasEqSystem(disjunctionComponent) {
+		copyNode.SetHasTrueChildren()
+		trueNode := &TrueNode{
+			number: "T_" + copyNode.number,
+		}
+		copyNode.infoChild = trueNode
 		//var sym symbol.Symbol
 		//sym, err = node.SubstituteVar()
 		//if err != nil {
@@ -93,6 +322,7 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 			tr = tr.parent
 		}
 		copyNode.children = append(copyNode.children, tr)
+		copyNode.SetHasBackCycle()
 		return nil
 	}
 	for _, ch := range node.children {
@@ -112,9 +342,10 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 		if err != nil {
 			return fmt.Errorf("error copying child graph: %v", err)
 		}
-		copyNode.AddSubstituteVar(newChildNode.substitution.LeftPart())
-		copyNode.children = append(copyNode.children, &newChildNode)
-
+		if newChildNode.HasTrueChildrenAndBackCycles() {
+			copyNode.AddSubstituteVar(newChildNode.substitution.LeftPart())
+			copyNode.children = append(copyNode.children, &newChildNode)
+		}
 	}
 	copyNode.FillSubstituteMapsFromChildren()
 	copyNode.FillHelpMapFromChildren()
@@ -292,6 +523,7 @@ func (s *Simplifier) walkWithSymbolBackCycled(node *Node) ([]equation.VariableVa
 
 		} else {
 			if metEmptyBefore[i] {
+				metEmptySubstNode = true
 				values[index].AddToFirstValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})
 			} else {
 				values[index].AddToSecondValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})

@@ -34,9 +34,19 @@ func (s *Substitution) RightPartLength() int {
 func (s *Substitution) IsToVar() bool {
 	return symbol.IsVar(s.leftPart)
 }
-
+func (s *Substitution) IsToLetter() bool {
+	return symbol.IsLetter(s.leftPart)
+}
 func (s *Substitution) IsTo() string {
 	return s.leftPart.Value()
+}
+
+func (s *Substitution) ToEquation() Equation {
+	if len(s.rightPart) == 0 {
+		return NewEquation([]symbol.Symbol{s.leftPart}, []symbol.Symbol{symbol.EmptySymbol{}})
+	} else {
+		return NewEquation([]symbol.Symbol{s.leftPart}, s.rightPart[:1])
+	}
 }
 
 func NewSubstitution(leftPart symbol.Symbol, rightPart []symbol.Symbol) Substitution {

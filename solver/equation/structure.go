@@ -89,6 +89,10 @@ func (str *Structure) Consts() map[symbol.Symbol]int {
 	return str.consts
 }
 
+func (str *Structure) Letters() map[symbol.Symbol]int {
+	return str.letters
+}
+
 func (str *Structure) LettersAndConstsLen() int {
 	return str.constsLen + str.lettersLen
 }

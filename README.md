@@ -28,6 +28,9 @@ Matiasevich word equations solver
 - png - 
 *boolean* create graph png image
 
+- dot - 
+*boolean* create graph dot description
+
 - cycle_range - 
 *int* cycle depth
 

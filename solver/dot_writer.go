@@ -27,11 +27,16 @@ func (dotWriter *DotWriter) StartDOTDescription() error {
 	return nil
 }
 
-func (dotWriter *DotWriter) EndDOTDescription(makePng bool) error {
+func (dotWriter *DotWriter) EndDOTDescription() error {
 	err := dotWriter.writer.Write("}")
 	if err != nil {
 		return fmt.Errorf("error ending DOT description: %v", err)
 	}
+	return nil
+}
+
+func (dotWriter *DotWriter) CreateFiles(makePng bool) error {
+	var err error
 	err = dotWriter.writer.Flush()
 	if err != nil {
 		return fmt.Errorf("error flushing DOT description: %v", err)
@@ -93,8 +98,8 @@ func (dotWriter *DotWriter) WriteInfoEdge(from *Node, to InfoNode) error {
 	return nil
 }
 
-func (dotWriter *DotWriter) WriteInfoEdgeWithLabel(from *Node, to InfoNode, label string) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[label=\"%s\"];\n", from.number, to.GetNumber(), label))
+func (dotWriter *DotWriter) WriteInfoEdgeWithLabel(from *Node, to *FalseNode) error {
+	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[label=\"%s\"];\n", from.number, to.GetNumber(), to.GetInfoLabel()))
 	if err != nil {
 		return fmt.Errorf("error describing edge: %v", err)
 	}

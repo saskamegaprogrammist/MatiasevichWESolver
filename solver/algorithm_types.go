@@ -4,12 +4,12 @@ import "fmt"
 
 const (
 	FINITE   = 1
-	INFINITE = 2
+	STANDARD = 2
 )
 
 var typesMap = map[string]int64{
 	"Finite":   FINITE,
-	"Standard": INFINITE,
+	"Standard": STANDARD,
 }
 
 func matchAlgorithmType(algorithmType string) (int64, error) {

@@ -21,6 +21,10 @@ func (eqPart *EqPart) Copy() EqPart {
 	return newEqPart
 }
 
+func (eqPart *EqPart) IsEmpty() bool {
+	return eqPart.Length == 0 || (eqPart.Length == 1 && symbol.IsEmpty(eqPart.Symbols[0]))
+}
+
 func (eqPart *EqPart) NewFromSymbols(symbols []symbol.Symbol) {
 	eqPart.Length = len(symbols)
 	eqPart.Symbols = symbols

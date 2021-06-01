@@ -14,6 +14,36 @@ type Equation struct {
 
 const EQUALS = "="
 
+func (equation *Equation) Letters() []symbol.Symbol {
+	var lettersMap = make(map[symbol.Symbol]bool)
+	for s, _ := range equation.LeftPart.Structure.Letters() {
+		lettersMap[s] = true
+	}
+	for s, _ := range equation.RightPart.Structure.Letters() {
+		lettersMap[s] = true
+	}
+	var letters = make([]symbol.Symbol, 0)
+	for s, _ := range lettersMap {
+		letters = append(letters, s)
+	}
+	return letters
+}
+
+func (equation *Equation) Check(constsAlphabet *Alphabet, varsAlphabet *Alphabet, lettersAlphabet *Alphabet) error {
+	for _, s := range equation.LeftPart.Symbols {
+		if symbol.IsVar(s) && !varsAlphabet.Has(s.Value()) {
+			return fmt.Errorf("variable doesn't belong to alphabet: %v", s)
+		}
+		if symbol.IsConst(s) && !constsAlphabet.Has(s.Value()) {
+			return fmt.Errorf("const doesn't belong to alphabet: %v", s)
+		}
+		if symbol.IsLetter(s) && !lettersAlphabet.Has(s.Value()) {
+			return fmt.Errorf("letter doesn't belong to alphabet: %v", s)
+		}
+	}
+	return nil
+}
+
 func (equation *Equation) IsEmpty() bool {
 	return equation.LeftPart.Length == 0 && equation.RightPart.Length == 0
 }
