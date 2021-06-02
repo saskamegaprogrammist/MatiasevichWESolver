@@ -568,3 +568,82 @@ func TestEquation_CheckSameness(t *testing.T) {
 		return
 	}
 }
+
+func TestEquation_CheckSimpleWord(t *testing.T) {
+	var simple bool
+	var symbols = []symbol.Symbol{symbol.Const("a")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: a should be simple")
+		return
+	}
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("b")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: ab should be simple")
+		return
+	}
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("b"), symbol.Const("a"),
+		symbol.Const("b"), symbol.Const("c"), symbol.Const("x"), symbol.Const("y")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: ababcxy should be simple")
+		return
+	}
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("a"), symbol.Const("a"),
+		symbol.Const("a"), symbol.Const("a"), symbol.Const("a")}
+	simple = checkSimpleWord(symbols)
+	if simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: aaaaaa should not be simple")
+		return
+	}
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("a"), symbol.Const("b"),
+		symbol.Const("a"), symbol.Const("a"), symbol.Const("a")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: aabaaa should be simple")
+		return
+	}
+
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("a"), symbol.Const("b"),
+		symbol.Const("a"), symbol.Const("a"), symbol.Const("a"), symbol.Const("b")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: aabaaab should be simple")
+		return
+	}
+
+	symbols = []symbol.Symbol{symbol.Const("a"), symbol.Const("a"), symbol.Const("b"),
+		symbol.Const("a"), symbol.Const("a"), symbol.Const("b"), symbol.Const("b")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: aabaabb should be simple")
+		return
+	}
+
+	symbols = []symbol.Symbol{symbol.Const("A"), symbol.Const("C"), symbol.Const("A"),
+		symbol.Const("C"), symbol.Const("A"), symbol.Const("A"), symbol.Const("C"),
+		symbol.Const("A"), symbol.Const("C"), symbol.Const("A")}
+	simple = checkSimpleWord(symbols)
+	if simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: ACACAACACA should not be simple")
+		return
+	}
+
+	symbols = []symbol.Symbol{symbol.Const("A"), symbol.Const("C"), symbol.Const("C"),
+		symbol.Const("C"), symbol.Const("A"), symbol.Const("C"), symbol.Const("C"),
+		symbol.Const("C")}
+	simple = checkSimpleWord(symbols)
+	if simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: ACCCACCC should not be simple")
+		return
+	}
+	symbols = []symbol.Symbol{symbol.Const("A"), symbol.Const("C"), symbol.Const("C"),
+		symbol.Const("C"), symbol.Const("A"), symbol.Const("C"), symbol.Const("C"),
+		symbol.Const("C"), symbol.Const("C")}
+	simple = checkSimpleWord(symbols)
+	if !simple {
+		t.Errorf("TestEquation_CheckSimpleWord failed: ACCCACCCC should be simple")
+		return
+	}
+}

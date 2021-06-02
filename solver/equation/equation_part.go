@@ -8,8 +8,11 @@ type EqPart struct {
 	Structure Structure
 }
 
-func (eqPart *EqPart) New() {
-	eqPart.Structure.New()
+func EmptyEqPart() EqPart {
+	return EqPart{
+		Symbols:   make([]symbol.Symbol, 0),
+		Structure: EmptyStructure(),
+	}
 }
 
 func (eqPart *EqPart) Copy() EqPart {
@@ -25,11 +28,12 @@ func (eqPart *EqPart) IsEmpty() bool {
 	return eqPart.Length == 0 || (eqPart.Length == 1 && symbol.IsEmpty(eqPart.Symbols[0]))
 }
 
-func (eqPart *EqPart) NewFromSymbols(symbols []symbol.Symbol) {
+func NewEqPartFromSymbols(symbols []symbol.Symbol) EqPart {
+	eqPart := EmptyEqPart()
 	eqPart.Length = len(symbols)
 	eqPart.Symbols = symbols
-	eqPart.Structure.New()
 	for _, s := range symbols {
 		eqPart.Structure.Add(s)
 	}
+	return eqPart
 }

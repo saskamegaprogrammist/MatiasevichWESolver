@@ -56,11 +56,11 @@ func checkFourthRuleRight(eq *equation.Equation) bool {
 // node rules
 
 func checkEquality(node *Node) bool {
-	return node.value.Equation().CheckEquality()
+	return node.value.CheckEquality()
 }
 
 func checkInequality(node *Node) bool {
-	return node.value.Equation().CheckInequality()
+	return node.value.CheckInequality()
 }
 
 func checkHasBeen(node *Node) (bool, *Node) {

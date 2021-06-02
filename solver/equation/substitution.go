@@ -15,6 +15,10 @@ func (s *Substitution) Copy() Substitution {
 	return newSubst
 }
 
+func (s *Substitution) IsEmpty() bool {
+	return len(s.rightPart) == 0 && s.leftPart == nil
+}
+
 func (s *Substitution) SubstitutesToEmpty() bool {
 	return len(s.rightPart) == 1 && symbol.IsEmpty(s.rightPart[0])
 }

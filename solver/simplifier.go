@@ -11,24 +11,22 @@ type Simplifier struct {
 	solver *Solver
 }
 
-func (s *Simplifier) Init(constantsAlph string, varsAlph string, eq string,
+func (s *Simplifier) Init(constantsAlph string, varsAlph string,
 	printOptions PrintOptions, solveOptions SolveOptions) error {
 	var err error
-	err = s.solver.Init(constantsAlph, varsAlph, eq, printOptions, solveOptions)
+	solver := Solver{}
+	s.solver = &solver
+	err = s.solver.InitWoEquation(constantsAlph, varsAlph, printOptions, solveOptions)
 	if err != nil {
 		return fmt.Errorf("error initing solver: %v", err)
 	}
 	return err
 }
 
-func (s *Simplifier) InitWithSolver(solver *Solver) {
-	s.solver = solver
-}
-
 func (s *Simplifier) Simplify(node *Node) error {
 	var err error
 	if !node.WasUnfolded() {
-		err = s.solver.solve(node)
+		err = s.solver.solveSystem(node)
 		if err != nil {
 			return fmt.Errorf("error solving node: %v", err)
 		}
@@ -81,9 +79,9 @@ func (s *Simplifier) simplifyNode(node *Node) (equation.EquationsSystem, error) 
 	return resSystem, nil
 }
 
-func (s *Simplifier) checkTrueNodesWoLetterSubstitutions(node *Node) (bool, []LetterSusbstitution) {
+func (s *Simplifier) checkTrueNodesWoLetterSubstitutions(node *Node) (bool, []LetterSubstitution) {
 	var nodesToEmpty = make([]*Node, 0)
-	var nonEmpty = make([]LetterSusbstitution, 0)
+	var nonEmpty = make([]LetterSubstitution, 0)
 	letterSubstitutions := node.LetterSubstitutions()
 	for _, ls := range letterSubstitutions {
 		if ls.HasNoSubstitutions() {
@@ -104,7 +102,7 @@ func (s *Simplifier) checkTrueNodesWoLetterSubstitutions(node *Node) (bool, []Le
 func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equation, error) {
 	var err error
 	letters := node.value.Equation().Letters()
-	var newLetterSubstitutions []LetterSusbstitution
+	var newLetterSubstitutions []LetterSubstitution
 	hasEmpty, nonEmpty := s.checkTrueNodesWoLetterSubstitutions(node)
 
 	if hasEmpty {
@@ -118,7 +116,7 @@ func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equ
 	for _, nls := range newLetterSubstitutions {
 		newEq := nls.NewEquation(node.value.Equation())
 		newNode := NewTreeWEquation("0", newEq)
-		err = s.solver.solve(&newNode)
+		err = s.solver.solveSystem(&newNode)
 		if err != nil {
 			return newNodes, eqs, fmt.Errorf("error solving node: %v", err)
 		}
@@ -129,9 +127,9 @@ func (s *Simplifier) checkRulesForLetters(node *Node) ([]*Node, [][]equation.Equ
 	return newNodes, eqs, nil
 }
 
-func (s *Simplifier) checkEqualLetterSubstituions(l []LetterSusbstitution, letters []symbol.Symbol) []LetterSusbstitution {
+func (s *Simplifier) checkEqualLetterSubstituions(l []LetterSubstitution, letters []symbol.Symbol) []LetterSubstitution {
 	var lsMaps = make([]map[symbol.Symbol]symbol.Symbol, 0)
-	var newL = make([]LetterSusbstitution, 0)
+	var newL = make([]LetterSubstitution, 0)
 	for _, l := range l {
 		lsMaps = append(lsMaps, s.createMapWithLetters(l, letters))
 	}
@@ -139,8 +137,8 @@ func (s *Simplifier) checkEqualLetterSubstituions(l []LetterSusbstitution, lette
 	return newL
 }
 
-func (s *Simplifier) compareLetterSubstitutionMaps(maps []map[symbol.Symbol]symbol.Symbol, oldL *[]LetterSusbstitution,
-	newL *[]LetterSusbstitution) {
+func (s *Simplifier) compareLetterSubstitutionMaps(maps []map[symbol.Symbol]symbol.Symbol, oldL *[]LetterSubstitution,
+	newL *[]LetterSubstitution) {
 	var newLMap = make(map[int]bool)
 	var mapsLen = len(maps)
 	var needsDeletion bool
@@ -231,7 +229,7 @@ func unfoldSymbol(sym symbol.Symbol, lMap *map[symbol.Symbol]symbol.Symbol) symb
 	return sym
 }
 
-func (s *Simplifier) createMapWithLetters(ls LetterSusbstitution, letters []symbol.Symbol) map[symbol.Symbol]symbol.Symbol {
+func (s *Simplifier) createMapWithLetters(ls LetterSubstitution, letters []symbol.Symbol) map[symbol.Symbol]symbol.Symbol {
 	var lsMap = make(map[symbol.Symbol]symbol.Symbol)
 	for _, s := range ls.substitutions {
 		lsMap[s.LeftPart()] = s.RightPart()[0]
@@ -273,7 +271,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 			return equation.EquationsSystem{}, fmt.Errorf("error copying graph: %v", err)
 		}
 		newGraphs = append(newGraphs, newGraph)
-		standart.MergeMaps(&varMap, newGraph.subgraphsSubstituteVars)
+		standart.MergeMapsInt(&varMap, newGraph.subgraphsSubstituteVars)
 	}
 	symbols := standart.SymbolArrayFromBoolMap(varMap)
 	if len(symbols) == 0 {
@@ -403,12 +401,12 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 				if valuesLen != 2 {
 					return fmt.Errorf("values length must be 2")
 				}
-				if !compareSymbols(values[0][1], values[1][1]) {
+				if !standart.CheckSymbolArraysEquality(values[0][1], values[1][1]) {
 					return fmt.Errorf("can't create characteristic equation")
 				}
 				if len(values[0][0]) == 1 && symbol.IsEmpty(values[0][0][0]) {
 					eqType = equation.EQ_TYPE_W_EMPTY
-				} else if !compareSymbols(values[0][0], values[1][0]) {
+				} else if !standart.CheckSymbolArraysEquality(values[0][0], values[1][0]) {
 					return fmt.Errorf("can't create characteristic equation")
 				}
 			}
@@ -433,18 +431,6 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 		}
 	}
 	return nil
-}
-
-func compareSymbols(original []symbol.Symbol, new []symbol.Symbol) bool {
-	if len(original) != len(new) {
-		return false
-	}
-	for i, s := range original {
-		if s != new[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *Simplifier) walkWithSymbol(node *Node) equation.VariableValues {

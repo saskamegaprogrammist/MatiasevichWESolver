@@ -3,13 +3,15 @@ package equation
 import (
 	"fmt"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/standart"
 	"strings"
 )
 
 type EquationsSystem struct {
-	value      Equation
-	compounds  []EquationsSystem
-	systemType int
+	value             Equation
+	compounds         []EquationsSystem
+	systemType        int
+	hasOnlyRegOrdered bool
 }
 
 func (es *EquationsSystem) Size() int {
@@ -23,6 +25,40 @@ func (es *EquationsSystem) Compounds() []EquationsSystem {
 	return es.compounds
 }
 
+func (es *EquationsSystem) Simplify() {
+	if es.IsEmpty() || es.IsSingleEquation() {
+		return
+	}
+	var newCompounds = make([]EquationsSystem, 0)
+	if es.IsConjunction() {
+		for _, c := range es.compounds {
+			if c.IsEmpty() {
+				continue
+			}
+			c.Simplify()
+			if c.IsConjunction() {
+				newCompounds = append(newCompounds, c.compounds...)
+			} else {
+				newCompounds = append(newCompounds, c)
+			}
+		}
+	}
+	if es.IsDisjunction() {
+		for _, c := range es.compounds {
+			if c.IsEmpty() {
+				continue
+			}
+			c.Simplify()
+			if c.IsDisjunction() {
+				newCompounds = append(newCompounds, c.compounds...)
+			} else {
+				newCompounds = append(newCompounds, c)
+			}
+		}
+	}
+	es.compounds = newCompounds
+}
+
 func (es *EquationsSystem) GetEquations() []Equation {
 	var equations = make([]Equation, 0)
 	if es.IsSingleEquation() {
@@ -34,11 +70,99 @@ func (es *EquationsSystem) GetEquations() []Equation {
 	return equations
 }
 
+// gets the first equation in system
 func (es *EquationsSystem) Equation() *Equation {
 	if es.IsSingleEquation() {
 		return &es.value
 	}
 	return es.compounds[0].Equation()
+}
+
+func (es *EquationsSystem) Substitute(substitute *Substitution) EquationsSystem {
+	if es.IsSingleEquation() {
+		newValue := es.value.Substitute(*substitute)
+		if newValue.IsEmpty() {
+			return EquationsSystem{}
+		}
+		return NewSingleEquation(newValue)
+	}
+	var newCompounds = make([]EquationsSystem, 0)
+	for _, c := range es.compounds {
+		newCompound := c.Substitute(substitute)
+		newCompound.Reduce()
+		if newCompound.IsEmpty() {
+			continue
+		}
+		newCompounds = append(newCompounds, newCompound)
+	}
+	newEs := EquationsSystem{
+		value:             Equation{},
+		compounds:         newCompounds,
+		systemType:        es.systemType,
+		hasOnlyRegOrdered: false,
+	}
+	newEs.Reduce()
+	return newEs
+}
+
+func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbol.Symbol]bool) {
+	if es.IsSingleEquation() {
+		newValue, vars := es.value.SubstituteVarsWithEmpty()
+		if newValue.IsEmpty() {
+			return EquationsSystem{}, vars
+		}
+		return NewSingleEquation(newValue), vars
+	}
+	var newCompounds = make([]EquationsSystem, 0)
+	var vars = make(map[symbol.Symbol]bool)
+	for _, c := range es.compounds {
+		newCompound, cvars := c.SubstituteVarsWithEmpty()
+		standart.MergeMapsBool(&vars, cvars)
+		newCompound.Reduce()
+		if newCompound.IsEmpty() {
+			continue
+		}
+		newCompounds = append(newCompounds, newCompound)
+	}
+	newEs := EquationsSystem{
+		value:             Equation{},
+		compounds:         newCompounds,
+		systemType:        es.systemType,
+		hasOnlyRegOrdered: false,
+	}
+	newEs.Reduce()
+	return newEs, vars
+}
+
+func (es *EquationsSystem) Reduce() {
+	if es.IsEmpty() || es.IsSingleEquation() {
+		return
+	}
+	var cmap = make(map[int]bool)
+	clen := len(es.compounds)
+OUTER:
+	for i, c := range es.compounds {
+		for j := i + 1; j < clen; j++ {
+			if c.Equals(es.compounds[j]) {
+				continue OUTER
+			}
+		}
+		if !(c.IsSingleEquation() && c.value.IsEmpty()) {
+			cmap[i] = true
+		}
+	}
+	var newCompounds = make([]EquationsSystem, 0)
+	for i := range cmap {
+		newCompounds = append(newCompounds, es.compounds[i])
+	}
+	if len(newCompounds) == 1 && newCompounds[0].IsSingleEquation() {
+		es.systemType = SINGLE_EQUATION
+		es.value = newCompounds[0].value
+		es.hasOnlyRegOrdered = newCompounds[0].hasOnlyRegOrdered
+		es.compounds = nil
+	} else {
+		es.compounds = newCompounds
+	}
 }
 
 func (es *EquationsSystem) Copy() EquationsSystem {
@@ -84,6 +208,10 @@ func (es *EquationsSystem) IsDisjunction() bool {
 
 func (es *EquationsSystem) IsConjunction() bool {
 	return es.systemType == CONJUNCTION
+}
+
+func (es *EquationsSystem) IsEmpty() bool {
+	return es.systemType == EMPTY
 }
 
 func (es *EquationsSystem) CheckInequality() bool {
@@ -150,12 +278,112 @@ func (es *EquationsSystem) Equals(system EquationsSystem) bool {
 	return false
 }
 
+func (es *EquationsSystem) SplitIntoRegOrdered() (EquationsSystem, EquationsSystem, error) {
+	if es.IsSingleEquation() {
+		if es.value.IsRegularlyOrdered() {
+			es.hasOnlyRegOrdered = true
+			return *es, NewEmptySystem(), nil
+		} else {
+			return NewEmptySystem(), *es, nil
+		}
+	}
+	if !es.IsConjunction() {
+		return EquationsSystem{}, EquationsSystem{}, fmt.Errorf("can only work with conjunctions")
+	}
+	if es.hasOnlyRegOrdered {
+		return *es, NewEmptySystem(), nil
+	}
+	eqs := es.GetEquations()
+	var regOrderedEqs = make([]Equation, 0)
+	var simpleEqs = make([]Equation, 0)
+	for _, e := range eqs {
+		if e.IsRegularlyOrdered() {
+			regOrderedEqs = append(regOrderedEqs, e)
+		} else {
+			simpleEqs = append(simpleEqs, e)
+		}
+	}
+	return NewRegOrderedConjunctionSystemFromEquations(regOrderedEqs),
+		NewConjunctionSystemFromEquations(simpleEqs), nil
+}
+
+func (es *EquationsSystem) NeedsSimplification() (bool, error) {
+	es.Print()
+	if !es.hasOnlyRegOrdered {
+		return false, fmt.Errorf("equation system doesn't consist of regulary ordered equations")
+	}
+	if es.IsDisjunction() {
+		return false, fmt.Errorf("equation system doesn't must be conjunction or single equation")
+	}
+	equations := es.GetEquations()
+	checked, varsAndLetters, err := checkSingleVarForEquation(equations)
+	if err != nil {
+		return true, fmt.Errorf("error checking normal form: %v", err)
+	}
+	if !checked {
+		return true, nil
+	}
+	if len(varsAndLetters) != len(equations) {
+		return true, fmt.Errorf("vars and eqs has different length: %d and %d",
+			len(varsAndLetters), len(equations))
+	}
+	var normal bool
+	for i, e := range equations {
+		normal, err = e.HasVarOrLetterForNormal(varsAndLetters[i])
+		if err != nil {
+			return true, fmt.Errorf("error checking normal form for equation: %v", err)
+		}
+		if !normal {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func checkSingleVarForEquation(eqs []Equation) (bool, []symbol.Symbol, error) {
+	var varsAndLettersMap = make(map[symbol.Symbol]bool, 0)
+	var varsAndLetters = make([]symbol.Symbol, 0)
+
+	for _, e := range eqs {
+		if e.structure.VarsAnLettersRangeLen() != 1 {
+			return false, varsAndLetters, nil
+		}
+		for l := range e.structure.letters {
+			// means this letter is already in another equation
+			if varsAndLettersMap[l] {
+				return false, varsAndLetters, nil
+			}
+			varsAndLettersMap[l] = true
+			varsAndLetters = append(varsAndLetters, l)
+		}
+		for v := range e.structure.vars {
+			// means this var is already in another equation
+			if varsAndLettersMap[v] {
+				return false, varsAndLetters, nil
+			}
+			varsAndLettersMap[v] = true
+			varsAndLetters = append(varsAndLetters, v)
+		}
+	}
+	if len(varsAndLetters) != len(varsAndLettersMap) {
+		return false, varsAndLetters, fmt.Errorf("array and map has different length: %d and %d",
+			len(varsAndLetters), len(varsAndLettersMap))
+	}
+	return true, varsAndLetters, nil
+}
+
 func NewSingleEquation(eq Equation) EquationsSystem {
 	return EquationsSystem{
 		value:      eq,
 		compounds:  nil,
 		systemType: SINGLE_EQUATION,
 	}
+}
+
+func NewRegOrderedSingleEquation(eq Equation) EquationsSystem {
+	req := NewSingleEquation(eq)
+	req.hasOnlyRegOrdered = true
+	return req
 }
 
 func CharacteristicEquation(sym symbol.Symbol, values VariableValues, eqType int) (EquationsSystem, error) {
@@ -215,9 +443,15 @@ func SystemFromValues(leftSym symbol.Symbol, rightPart VariableValues) Equations
 }
 
 func NewConjunctionSystemFromEquations(equations []Equation) EquationsSystem {
+	if len(equations) == 0 {
+		return NewEmptySystem()
+	}
 	eqSystems := make([]EquationsSystem, 0)
 	for _, eq := range equations {
 		eqSystems = append(eqSystems, NewSingleEquation(eq))
+	}
+	if len(eqSystems) == 1 {
+		return eqSystems[0]
 	}
 	return EquationsSystem{
 		value:      Equation{},
@@ -226,10 +460,35 @@ func NewConjunctionSystemFromEquations(equations []Equation) EquationsSystem {
 	}
 }
 
+func NewRegOrderedConjunctionSystemFromEquations(equations []Equation) EquationsSystem {
+	if len(equations) == 0 {
+		return NewEmptySystem()
+	}
+	eqSystems := make([]EquationsSystem, 0)
+	for _, eq := range equations {
+		eqSystems = append(eqSystems, NewRegOrderedSingleEquation(eq))
+	}
+	if len(eqSystems) == 1 {
+		return eqSystems[0]
+	}
+	return EquationsSystem{
+		value:             Equation{},
+		compounds:         eqSystems,
+		systemType:        CONJUNCTION,
+		hasOnlyRegOrdered: true,
+	}
+}
+
 func NewDisjunctionSystemFromEquations(equations []Equation) EquationsSystem {
+	if len(equations) == 0 {
+		return NewEmptySystem()
+	}
 	eqSystems := make([]EquationsSystem, 0)
 	for _, eq := range equations {
 		eqSystems = append(eqSystems, NewSingleEquation(eq))
+	}
+	if len(eqSystems) == 1 {
+		return eqSystems[0]
 	}
 	return EquationsSystem{
 		value:      Equation{},
@@ -239,6 +498,9 @@ func NewDisjunctionSystemFromEquations(equations []Equation) EquationsSystem {
 }
 
 func NewConjunctionSystem(equations []EquationsSystem) EquationsSystem {
+	if len(equations) == 0 {
+		return NewEmptySystem()
+	}
 	if len(equations) == 1 {
 		return equations[0]
 	}
@@ -250,6 +512,9 @@ func NewConjunctionSystem(equations []EquationsSystem) EquationsSystem {
 }
 
 func NewDisjunctionSystem(equations []EquationsSystem) EquationsSystem {
+	if len(equations) == 0 {
+		return NewEmptySystem()
+	}
 	if len(equations) == 1 {
 		return equations[0]
 	}
@@ -257,5 +522,12 @@ func NewDisjunctionSystem(equations []EquationsSystem) EquationsSystem {
 		value:      Equation{},
 		compounds:  equations,
 		systemType: DISJUNCTION,
+	}
+}
+
+func NewEmptySystem() EquationsSystem {
+	return EquationsSystem{
+		value:      Equation{},
+		systemType: EMPTY,
 	}
 }

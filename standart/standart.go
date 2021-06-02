@@ -52,8 +52,26 @@ func SymbolArrayFromIntMap(symbolMap map[symbol.Symbol]int) []symbol.Symbol {
 	return symbolArray
 }
 
-func MergeMaps(symbolMap *map[symbol.Symbol]bool, graphMap map[symbol.Symbol]int) {
+func MergeMapsInt(symbolMap *map[symbol.Symbol]bool, graphMap map[symbol.Symbol]int) {
 	for k, _ := range graphMap {
 		(*symbolMap)[k] = true
 	}
+}
+
+func MergeMapsBool(symbolMap *map[symbol.Symbol]bool, graphMap map[symbol.Symbol]bool) {
+	for k, _ := range graphMap {
+		(*symbolMap)[k] = true
+	}
+}
+
+func CheckSymbolArraysEquality(original []symbol.Symbol, new []symbol.Symbol) bool {
+	if len(original) != len(new) {
+		return false
+	}
+	for i, s := range original {
+		if s != new[i] {
+			return false
+		}
+	}
+	return true
 }

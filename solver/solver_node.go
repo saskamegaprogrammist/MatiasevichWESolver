@@ -20,12 +20,12 @@ type Node struct {
 	subgraphRoot            bool
 	infoChild               InfoNode
 	unfolded                bool
-	letterSubstitutions     []*LetterSusbstitution
+	letterSubstitutions     []*LetterSubstitution
 }
 
 // common setters an getters
 
-func (node *Node) LetterSubstitutions() []*LetterSusbstitution {
+func (node *Node) LetterSubstitutions() []*LetterSubstitution {
 	return node.letterSubstitutions
 }
 
@@ -251,7 +251,7 @@ func (node *Node) Copy(original *Node) {
 	//standart.CopySymbolIntMap(&node.childrenSubstituteVars, &newNode.childrenSubstituteVars)
 	node.subgraphsSubstituteVars = make(map[symbol.Symbol]int)
 	//standart.CopySymbolIntMap(&node.subgraphsSubstituteVars, &newNode.subgraphsSubstituteVars)
-	node.letterSubstitutions = make([]*LetterSusbstitution, 0)
+	node.letterSubstitutions = make([]*LetterSubstitution, 0)
 
 }
 
@@ -268,7 +268,7 @@ func NewNodeWEquation(sub equation.Substitution, number string, parent *Node, va
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
-		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+		letterSubstitutions:     make([]*LetterSubstitution, 0),
 	}
 }
 
@@ -283,7 +283,7 @@ func NewNodeWEquationsSystem(sub equation.Substitution, number string, parent *N
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
-		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+		letterSubstitutions:     make([]*LetterSubstitution, 0),
 	}
 }
 
@@ -296,7 +296,7 @@ func NewTreeWEquation(number string, val equation.Equation) Node {
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
-		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+		letterSubstitutions:     make([]*LetterSubstitution, 0),
 	}
 }
 
@@ -309,7 +309,7 @@ func NewTreeWEquationsSystem(number string, val equation.EquationsSystem) Node {
 		childrenSubstituteVars:  make(map[symbol.Symbol]int),
 		subgraphsSubstituteVars: make(map[symbol.Symbol]int),
 		helpMap:                 make(map[int]bool),
-		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+		letterSubstitutions:     make([]*LetterSubstitution, 0),
 	}
 }
 
@@ -320,7 +320,7 @@ func EmptyNode() Node {
 		children:                make([]*Node, 0),
 		parentsFromBackCycles:   make([]*Node, 0),
 		helpMap:                 make(map[int]bool),
-		letterSubstitutions:     make([]*LetterSusbstitution, 0),
+		letterSubstitutions:     make([]*LetterSubstitution, 0),
 	}
 }
 

@@ -77,6 +77,7 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 		FullGraph:                  fullGraph,
 		AlgorithmMode:              algorithmType,
 		FullSystem:                 fullSystem,
+		NeedsSimplification:        true,
 	}
 	printOptions := solver.PrintOptions{
 		Dot:       makeDot,

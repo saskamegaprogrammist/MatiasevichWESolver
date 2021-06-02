@@ -8,6 +8,7 @@ type SolveOptions struct {
 	FullSystem                 bool
 	AlgorithmMode              string
 	SaveLettersSubstitutions   bool
+	NeedsSimplification        bool
 }
 
 type PrintOptions struct {

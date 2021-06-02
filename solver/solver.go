@@ -7,6 +7,7 @@ import (
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"math"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,7 +29,7 @@ type Solver struct {
 	dotWriter     DotWriter
 	printOptions  PrintOptions
 	solveOptions  SolveOptions
-	simpifier     Simplifier
+	simplifier    Simplifier
 }
 
 func (solver *Solver) InitWoEquation(constantsAlph string, varsAlph string,
@@ -66,7 +67,22 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 	solver.printOptions = printOptions
 	solver.solveOptions = solveOptions
 
-	solver.simpifier.InitWithSolver(solver)
+	if solveOptions.NeedsSimplification {
+		err = solver.simplifier.Init(constantsAlph, varsAlph, PrintOptions{}, SolveOptions{
+			LengthAnalysis:             false,
+			SplitByEquidecomposability: false,
+			CycleRange:                 10,
+			FullGraph:                  true,
+			FullSystem:                 false,
+			AlgorithmMode:              solver.solveOptions.AlgorithmMode,
+			SaveLettersSubstitutions:   true,
+			NeedsSimplification:        false,
+		})
+
+		if err != nil {
+			return fmt.Errorf("error initing simplifier: %v", err)
+		}
+	}
 
 	// TODO: change const value
 	solver.solveOptions.SaveLettersSubstitutions = true
@@ -160,6 +176,32 @@ func (solver *Solver) getAnswer() string {
 	return "FALSE"
 }
 
+// help functions to create letter alphabet
+
+func randStr(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
+
+func (solver *Solver) getLetter() symbol.Letter {
+	i := 1
+	for {
+		jRange := int(math.Pow(float64(len(letterBytes)), float64(i)))
+		for j := 0; j < jRange; j++ {
+			str := randStr(i)
+			if !solver.wordsAlph.Has(str) {
+				solver.wordsAlph.AddWord(str)
+				return symbol.LetterVar(str)
+			}
+		}
+		i++
+	}
+}
+
 func (solver *Solver) Solve() (string, time.Duration, error) {
 	if solver.equation.IsEmpty() {
 		return "", 0, fmt.Errorf("no equation was set")
@@ -250,16 +292,37 @@ func (solver *Solver) solveEquationTimes(equation equation.Equation, times int) 
 
 	magicPrefix := strings.Repeat(MAGIC_PREFIX, times)
 	tree := NewTreeWEquation(magicPrefix+"0", equation)
-	err = solver.solve(&tree)
+	err = solver.solveSystem(&tree)
 	if err != nil {
 		return 0, fmt.Errorf("error solving equation: %v", err)
 	}
 	tree.SetWasUnfolded()
 	measuredTime := time.Since(timeStart)
-	//err = solver.simpifier.Simplify(&tree)
+	//err = solver.simplifier.Simplify(&tree)
 	//if err != nil {
 	//	return measuredTime, fmt.Errorf("error simplifing eq: %v", err)
 	//}
+
+	if solver.printOptions.Dot {
+		err = solver.createGraphDescription(&tree)
+		if err != nil {
+			return measuredTime, fmt.Errorf("error creating graph desc: %v", err)
+		}
+	}
+	return measuredTime, nil
+}
+
+func (solver *Solver) solveEquationsSystem(es equation.EquationsSystem) (time.Duration, error) {
+	var err error
+	timeStart := time.Now()
+
+	tree := NewTreeWEquationsSystem("0", es)
+	err = solver.solveSystem(&tree)
+	if err != nil {
+		return 0, fmt.Errorf("error solving equations system: %v", err)
+	}
+	tree.SetWasUnfolded()
+	measuredTime := time.Since(timeStart)
 
 	if solver.printOptions.Dot {
 		err = solver.createGraphDescription(&tree)
@@ -283,32 +346,6 @@ func (solver *Solver) createGraphDescription(tree *Node) error { // if we are so
 	return nil
 }
 
-func (solver *Solver) solveEquationAsSystem(eq equation.Equation) (time.Duration, error) {
-	timeStart := time.Now()
-	err := solver.setWriter(eq) // setting filename with equation
-	if err != nil {
-		return 0, fmt.Errorf("error setting writer: %v", err)
-	}
-	tree := Node{
-		number: "0",
-		value:  equation.NewSingleEquation(eq),
-	}
-	err = solver.dotWriter.StartDOTDescription()
-	if err != nil {
-		return 0, fmt.Errorf("error writing DOT description: %v", err)
-	}
-	err = solver.solveWithSystem(&tree)
-	if err != nil {
-		return 0, fmt.Errorf("error solving equation: %v", err)
-	}
-	measuredTime := time.Since(timeStart)
-	err = solver.dotWriter.EndDOTDescription()
-	if err != nil {
-		return measuredTime, fmt.Errorf("error writing DOT description: %v", err)
-	}
-	return measuredTime, nil
-}
-
 func checkRuleForSystem(nodeSystem *NodeSystem, rule func(eq equation.Equation) bool, each bool) bool {
 	for _, eq := range nodeSystem.Value.Equations {
 		if rule(eq) {
@@ -320,224 +357,6 @@ func checkRuleForSystem(nodeSystem *NodeSystem, rule func(eq equation.Equation) 
 		}
 	}
 	return true
-}
-
-func randStr(n int) string {
-	rand.Seed(time.Now().UnixNano())
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
-
-func (solver *Solver) getLetter() symbol.Letter {
-	i := 1
-	for {
-		jRange := int(math.Pow(float64(len(letterBytes)), float64(i)))
-		for j := 0; j < jRange; j++ {
-			str := randStr(i)
-			if !solver.wordsAlph.Has(str) {
-				solver.wordsAlph.AddWord(str)
-				return symbol.LetterVar(str)
-			}
-		}
-		i++
-	}
-}
-
-func (solver *Solver) solveWithSystem(node *Node) error {
-	var err error
-	err = solver.dotWriter.WriteNode(node)
-	if err != nil {
-		return fmt.Errorf("error writing node: %v", err)
-	}
-	if !solver.solveOptions.FullGraph && solver.hasSolution {
-		return nil
-	}
-	if len(node.number) > solver.solveOptions.CycleRange {
-		solver.cycled = true
-		return nil
-	}
-	hasBeen, tr := checkHasBeen(node)
-	if hasBeen {
-		err = solver.dotWriter.WriteDottedEdge(node, tr)
-		if err != nil {
-			return fmt.Errorf("error writing dotted edge: %v", err)
-		}
-		//fmt.Println("HAS BEEN")
-		//fmt.Println(node.number)
-		return nil
-	}
-	var newEquations []equation.Equation
-	for _, eq := range node.value.GetEquations() {
-		if !checkFirstSymbols(&eq) || checkThirdRuleRight(&eq) && !checkThirdRuleLeft(&eq) ||
-			!checkThirdRuleRight(&eq) && checkThirdRuleLeft(&eq) {
-			solver.createFalseNode(node, REGULAR_FALSE)
-			err = solver.dotWriter.WriteInfoNode(node.infoChild)
-			if err != nil {
-				return fmt.Errorf("error writing info node: %v", err)
-			}
-			err = solver.dotWriter.WriteInfoEdgeWithLabel(node, (node.infoChild).(*FalseNode))
-			if err != nil {
-				return fmt.Errorf("error writing info edge: %v", err)
-			}
-			return nil
-		}
-		system := eq.SplitByEquidecomposability()
-		if system.Size != 1 {
-			for _, neq := range system.Equations {
-				if !neq.CheckEquality() {
-					newEquations = append(newEquations, neq)
-				}
-			}
-		} else {
-			if !eq.CheckEquality() {
-				newEquations = append(newEquations, eq)
-			}
-		}
-	}
-	if len(newEquations) == 0 {
-		solver.createTrueNode(node)
-		err = solver.dotWriter.WriteInfoNode(node.infoChild)
-		if err != nil {
-			return fmt.Errorf("error writing info node: %v", err)
-		}
-		err = solver.dotWriter.WriteInfoEdge(node, node.infoChild)
-		if err != nil {
-			return fmt.Errorf("error writing info edge: %v", err)
-		}
-		return nil
-	} else if len(newEquations) > node.value.Size() {
-		child := NewNodeWEquationsSystem(equation.Substitution{},
-			"x"+node.number, node, equation.NewConjunctionSystemFromEquations(newEquations))
-		err = solver.dotWriter.WriteNode(&child)
-		if err != nil {
-			return fmt.Errorf("error writing node: %v", err)
-		}
-		err = solver.dotWriter.WriteLabelEdgeBold(node, &child)
-		if err != nil {
-			return fmt.Errorf("error writing splitting edge: %v", err)
-		}
-		node = &child
-	}
-	firstEq := newEquations[0]
-	if solver.algorithmType == FINITE {
-		if checkSecondRuleLeftFinite(&firstEq) {
-			substitution := equation.NewSubstitution(firstEq.RightPart.Symbols[0], []symbol.Symbol{firstEq.LeftPart.Symbols[0]})
-
-			var substNewEquationsFirst []equation.Equation
-			var newEq equation.Equation
-			for _, neq := range newEquations {
-				newEq = neq.Substitute(substitution)
-				substNewEquationsFirst = append(substNewEquationsFirst, newEq)
-			}
-
-			child := NewNodeWEquationsSystem(equation.Substitution{},
-				"a"+node.number, node, equation.NewConjunctionSystemFromEquations(substNewEquationsFirst))
-			node.children = []*Node{&child}
-			err = solver.dotWriter.WriteLabelEdge(node, &child, &firstEq.RightPart.Symbols[0], substitution.RightPart())
-			if err != nil {
-				return fmt.Errorf("error writing label edge: %v", err)
-			}
-		}
-
-		if checkSecondRuleRightFinite(&firstEq) {
-			substitution := equation.NewSubstitution(firstEq.LeftPart.Symbols[0], []symbol.Symbol{firstEq.RightPart.Symbols[0]})
-
-			var substNewEquationsFirst []equation.Equation
-			var newEq equation.Equation
-			for _, neq := range newEquations {
-				newEq = neq.Substitute(substitution)
-				substNewEquationsFirst = append(substNewEquationsFirst, newEq)
-			}
-
-			child := NewNodeWEquationsSystem(equation.Substitution{},
-				"b"+node.number, node, equation.NewConjunctionSystemFromEquations(substNewEquationsFirst))
-
-			node.children = []*Node{&child}
-			err = solver.dotWriter.WriteLabelEdge(node, &child, &firstEq.LeftPart.Symbols[0], substitution.RightPart())
-			if err != nil {
-				return fmt.Errorf("error writing label edge: %v", err)
-			}
-		}
-	}
-	if checkSecondRuleLeft(&firstEq) {
-		var newEq equation.Equation
-		substFirst := equation.NewSubstitution(firstEq.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-
-		var substNewEquationsFirst []equation.Equation
-		for _, neq := range newEquations {
-			newEq = neq.Substitute(substFirst)
-			substNewEquationsFirst = append(substNewEquationsFirst, newEq)
-		}
-
-		firstChild := NewNodeWEquationsSystem(equation.Substitution{},
-			node.number+"1", node, equation.NewConjunctionSystemFromEquations(substNewEquationsFirst))
-
-		substSecond := equation.NewSubstitution(firstEq.RightPart.Symbols[0], []symbol.Symbol{firstEq.LeftPart.Symbols[0], firstEq.RightPart.Symbols[0]})
-
-		var substNewEquationsSecond []equation.Equation
-		for _, neq := range newEquations {
-			newEq = neq.Substitute(substSecond)
-			substNewEquationsSecond = append(substNewEquationsSecond, newEq)
-		}
-
-		secondChild := NewNodeWEquationsSystem(equation.Substitution{},
-			node.number+"2", node, equation.NewConjunctionSystemFromEquations(substNewEquationsSecond))
-
-		node.children = []*Node{&firstChild, &secondChild}
-		err = solver.dotWriter.WriteLabelEdge(node, &firstChild, &firstEq.RightPart.Symbols[0], substFirst.RightPart())
-		if err != nil {
-			return fmt.Errorf("error writing label edge: %v", err)
-		}
-		err = solver.dotWriter.WriteLabelEdge(node, &secondChild, &firstEq.RightPart.Symbols[0], substSecond.RightPart())
-		if err != nil {
-			return fmt.Errorf("error writing label edge: %v", err)
-		}
-	}
-	if checkSecondRuleRight(&firstEq) {
-		var newEq equation.Equation
-		substFirst := equation.NewSubstitution(firstEq.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-
-		var substNewEquationsFirst []equation.Equation
-		for _, neq := range newEquations {
-			newEq = neq.Substitute(substFirst)
-			substNewEquationsFirst = append(substNewEquationsFirst, newEq)
-		}
-
-		firstChild := NewNodeWEquationsSystem(equation.Substitution{},
-			node.number+"3", node, equation.NewConjunctionSystemFromEquations(substNewEquationsFirst))
-
-		substSecond := equation.NewSubstitution(firstEq.LeftPart.Symbols[0], []symbol.Symbol{firstEq.RightPart.Symbols[0], firstEq.LeftPart.Symbols[0]})
-
-		var substNewEquationsSecond []equation.Equation
-		for _, neq := range newEquations {
-			newEq = neq.Substitute(substSecond)
-			substNewEquationsSecond = append(substNewEquationsSecond, newEq)
-		}
-
-		secondChild := NewNodeWEquationsSystem(equation.Substitution{},
-			node.number+"4", node, equation.NewConjunctionSystemFromEquations(substNewEquationsSecond))
-
-		node.children = []*Node{&firstChild, &secondChild}
-
-		err = solver.dotWriter.WriteLabelEdge(node, &firstChild, &firstEq.LeftPart.Symbols[0], substFirst.RightPart())
-		if err != nil {
-			return fmt.Errorf("error writing label edge: %v", err)
-		}
-		err = solver.dotWriter.WriteLabelEdge(node, &secondChild, &firstEq.LeftPart.Symbols[0], substSecond.RightPart())
-		if err != nil {
-			return fmt.Errorf("error writing label edge: %v", err)
-		}
-	}
-	for _, child := range node.children {
-		err = solver.solveWithSystem(child)
-		if err != nil {
-			return fmt.Errorf("error solving for child: %v", err)
-		}
-	}
-	return nil
 }
 
 func (solver *Solver) createFalseNode(node *Node, falseType int) {
@@ -559,6 +378,252 @@ func (solver *Solver) createTrueNode(node *Node) {
 	solver.hasSolution = true
 	//fmt.Println("TRUE")
 	//fmt.Println(node.number)
+}
+
+func newEquationSystemWithSubstitution(oldNode *Node, substitution *equation.Substitution, number string) Node {
+	newValue := oldNode.value.Substitute(substitution)
+	return NewNodeWEquationsSystem(*substitution, number, oldNode, newValue)
+}
+
+func (solver *Solver) simplifyNode(node *Node) (bool, error) {
+	node.value.Simplify()
+	node.value.Reduce()
+	regOrdered, simple, err := node.value.SplitIntoRegOrdered()
+	if err != nil {
+		return false, fmt.Errorf("error splitting into reg ordered and simple: %v", err)
+	}
+	if regOrdered.IsEmpty() {
+		return false, nil
+	}
+	needsSimplification, err := regOrdered.NeedsSimplification()
+	if err != nil {
+		return false, fmt.Errorf("error checking if needs simplification: %v", err)
+	}
+	if !needsSimplification {
+		return false, nil
+	}
+	tree := NewTreeWEquationsSystem("0", regOrdered)
+	solver.solveOptions.FullGraph = true
+	err = solver.simplifier.Simplify(&tree)
+	if err != nil {
+		return false, fmt.Errorf("error simplifying: %v", err)
+	}
+	if !tree.HasTrueChildren() {
+		solver.createTrueNode(node)
+		return true, nil
+	}
+	var newEs equation.EquationsSystem
+	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
+		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{newEs, simple})
+		newEs.Simplify()
+		child := NewNodeWEquationsSystem(equation.Substitution{},
+			"s"+node.number, node, newEs)
+		node.SetChildren([]*Node{&child})
+	} else if tree.simplified.IsDisjunction() {
+		var newChildNodes = make([]*Node, 0)
+		for i, c := range tree.simplified.Compounds() {
+			newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{c, simple})
+			newEs.Simplify()
+			child := NewNodeWEquationsSystem(equation.Substitution{},
+				"s"+node.number+strconv.Itoa(i), node, newEs)
+			newChildNodes = append(newChildNodes, &child)
+		}
+		node.SetChildren(newChildNodes)
+	} else {
+		child := NewNodeWEquationsSystem(equation.Substitution{},
+			"s"+node.number, node, simple)
+		node.SetChildren([]*Node{&child})
+	}
+	return true, nil
+}
+
+func (solver *Solver) solveSystem(node *Node) error {
+	var err error
+	if !solver.solveOptions.FullGraph && solver.hasSolution {
+		return nil
+	}
+	if len(node.number) > solver.solveOptions.CycleRange {
+		solver.cycled = true
+		return nil
+	}
+
+	//fmt.Println(node.number)
+	if checkInequality(node) {
+		solver.createFalseNode(node, REGULAR_FALSE)
+		return nil
+	}
+	if checkEquality(node) {
+		solver.createTrueNode(node)
+		if solver.algorithmType == FINITE && solver.solveOptions.SaveLettersSubstitutions {
+			nls := NewLetterSubstitution(node)
+			if node.Substitution().IsToLetter() {
+				nls.AddSubstToHead(node.substitution)
+			}
+			node.letterSubstitutions = append(node.letterSubstitutions, &nls)
+		}
+		return nil
+	}
+
+	hasBeen, tr := checkHasBeen(node)
+	if hasBeen {
+		node.SetHasBackCycle()
+		node.SetChildren([]*Node{tr})
+		tr.AddParentFromBackCycle(node)
+		return nil
+	}
+
+	var simplified bool
+
+	if solver.solveOptions.NeedsSimplification {
+		simplified, err = solver.simplifyNode(node)
+		if err != nil {
+			return fmt.Errorf("error simplifying node: %v", err)
+		}
+	}
+
+	if !simplified {
+		firstEquation := node.value.Equation()
+
+		if solver.algorithmType == FINITE {
+			if checkFirstRuleFinite(firstEquation) {
+				substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+				child := newEquationSystemWithSubstitution(node, &substitute, "a"+node.number)
+				node.SetChildren([]*Node{&child})
+			}
+			if checkSecondRuleLeftFinite(firstEquation) {
+				substitute := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0]})
+				child := newEquationSystemWithSubstitution(node, &substitute, "b"+node.number)
+				node.SetChildren([]*Node{&child})
+			}
+			if checkSecondRuleRightFinite(firstEquation) {
+				substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+				child := newEquationSystemWithSubstitution(node, &substitute, "c"+node.number)
+				node.SetChildren([]*Node{&child})
+			}
+			if checkFourthRuleLeft(firstEquation) {
+				substFirst := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+				firstChild := newEquationSystemWithSubstitution(node, &substFirst, "d"+node.number)
+
+				substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]})
+				secondChild := newEquationSystemWithSubstitution(node, &substSecond, "e"+node.number)
+
+				node.SetChildren([]*Node{&firstChild, &secondChild})
+			}
+			if checkFourthRuleRight(firstEquation) {
+				substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+				firstChild := newEquationSystemWithSubstitution(node, &substFirst, "f"+node.number)
+
+				substSecond := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]})
+				secondChild := newEquationSystemWithSubstitution(node, &substSecond, "g"+node.number)
+
+				node.SetChildren([]*Node{&firstChild, &secondChild})
+			}
+		}
+		if checkFirstRule(firstEquation) {
+			var newValsFirst []symbol.Symbol
+			if solver.algorithmType == STANDARD {
+				newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]}
+			}
+			if solver.algorithmType == FINITE {
+				word := solver.getLetter()
+				newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], word, firstEquation.LeftPart.Symbols[0]}
+			}
+			substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], newValsFirst)
+			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"1")
+
+			var newValsSecond []symbol.Symbol
+			if solver.algorithmType == STANDARD {
+				newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]}
+			}
+			if solver.algorithmType == FINITE {
+				word := solver.getLetter()
+				newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], word, firstEquation.RightPart.Symbols[0]}
+			}
+
+			substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], newValsSecond)
+			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"2")
+
+			substThird := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+			thirdChild := newEquationSystemWithSubstitution(node, &substThird, node.number+"3")
+
+			node.SetChildren([]*Node{&thirdChild, &firstChild, &secondChild})
+		}
+
+		if checkSecondRuleLeft(firstEquation) {
+			substFirst := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"4")
+
+			substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]})
+			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"5")
+
+			node.SetChildren([]*Node{&firstChild, &secondChild})
+		}
+		if checkSecondRuleRight(firstEquation) {
+			substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"6")
+
+			substSecond := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]})
+			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"7")
+
+			node.SetChildren([]*Node{&firstChild, &secondChild})
+		}
+		if checkThirdRuleLeft(firstEquation) || checkThirdRuleRight(firstEquation) {
+			newES, subsVars := node.value.SubstituteVarsWithEmpty()
+			var childL *Node
+			for v, _ := range subsVars {
+				if childL != nil {
+					node = childL
+				}
+				subst := equation.NewSubstitution(v, []symbol.Symbol{symbol.Empty()})
+				// Writing original equation for every node
+				child := NewNodeWEquationsSystem(subst, node.number+"8", node, node.value)
+				node.SetChildren([]*Node{&child})
+				childL = &child
+			}
+			// Writing equation with all substituted vars
+			node.children[0].value = newES
+
+		}
+	}
+
+	//node.Print()
+	//for i, child := range node.children {
+	//	fmt.Printf(" %d  :", i)
+	//	child.Print()
+	//}
+	if len(node.children) == 0 {
+		solver.createFalseNode(node, REGULAR_FALSE)
+		return nil
+	}
+	for _, child := range node.children {
+		err = solver.solveSystem(child)
+		if err != nil {
+			return fmt.Errorf("error solving for child: %v", err)
+		}
+	}
+	node.FillHelpMapFromChildren()
+	node.FillSubstituteMapsFromChildren()
+	// needs to go afterwards because of the map filling
+	for _, child := range node.children {
+		if child.HasTrueChildren() {
+			node.AddSubstituteVar(child.substitution.LeftPart())
+		}
+		if solver.algorithmType == FINITE && solver.solveOptions.SaveLettersSubstitutions {
+			if child.HasTrueChildren() {
+				node.letterSubstitutions = append(node.letterSubstitutions, child.letterSubstitutions...)
+			}
+		}
+	}
+
+	if solver.algorithmType == FINITE && solver.solveOptions.SaveLettersSubstitutions {
+		if node.Substitution().IsToLetter() {
+			for _, ls := range node.letterSubstitutions {
+				ls.AddSubstToHead(node.substitution)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (solver *Solver) solve(node *Node) error {
@@ -812,12 +877,20 @@ func (solver *Solver) describeGraph(node *Node) error {
 
 	for _, child := range node.children {
 		subst := child.Substitution()
-		leftSym := subst.LeftPart()
-		rightPart := subst.RightPart()
-		err = solver.dotWriter.WriteLabelEdge(node, child, &leftSym, rightPart)
-		if err != nil {
-			return fmt.Errorf("error writing label edge: %v", err)
+		if subst.IsEmpty() {
+			err = solver.dotWriter.WriteLabelEdgeBold(node, child)
+			if err != nil {
+				return fmt.Errorf("error writing label edge bold: %v", err)
+			}
+		} else {
+			leftSym := subst.LeftPart()
+			rightPart := subst.RightPart()
+			err = solver.dotWriter.WriteLabelEdge(node, child, &leftSym, rightPart)
+			if err != nil {
+				return fmt.Errorf("error writing label edge: %v", err)
+			}
 		}
+
 		err = solver.describeGraph(child)
 		if err != nil {
 			return fmt.Errorf("error solving for child: %v", err)

@@ -15,10 +15,47 @@ type Structure struct {
 	consts     map[symbol.Symbol]int
 }
 
-func (str *Structure) New() {
-	str.letters = make(map[symbol.Symbol]int)
-	str.consts = make(map[symbol.Symbol]int)
-	str.vars = make(map[symbol.Symbol]int)
+func EmptyStructure() Structure {
+	return Structure{
+		lettersLen: 0,
+		varsLen:    0,
+		constsLen:  0,
+		letters:    make(map[symbol.Symbol]int),
+		vars:       make(map[symbol.Symbol]int),
+		consts:     make(map[symbol.Symbol]int),
+	}
+}
+
+func NewStructure(s []symbol.Symbol) Structure {
+	newStructure := EmptyStructure()
+	for _, s := range s {
+		newStructure.Add(s)
+	}
+	return newStructure
+}
+
+func MergeStructures(left *Structure, right *Structure) Structure {
+	merged := EmptyStructure()
+	for l, t := range left.letters {
+		merged.AddTimes(l, t)
+	}
+	for v, t := range left.vars {
+		merged.AddTimes(v, t)
+	}
+	for c, t := range left.consts {
+		merged.AddTimes(c, t)
+	}
+
+	for l, t := range right.letters {
+		merged.AddTimes(l, t)
+	}
+	for v, t := range right.vars {
+		merged.AddTimes(v, t)
+	}
+	for c, t := range right.consts {
+		merged.AddTimes(c, t)
+	}
+	return merged
 }
 
 func (str *Structure) Copy() Structure {
@@ -43,17 +80,30 @@ func (str *Structure) Sub(symb symbol.Symbol) {
 	str.AddTimes(symb, -1)
 }
 
+func (str *Structure) SubTimes(symb symbol.Symbol, times int) {
+	str.AddTimes(symb, -times)
+}
+
 func (str *Structure) AddTimes(symb symbol.Symbol, times int) {
 	switch {
 	case symbol.IsVar(symb):
 		str.varsLen += times
 		str.vars[symb] += times
+		if str.vars[symb] == 0 {
+			delete(str.vars, symb)
+		}
 	case symbol.IsConst(symb):
 		str.constsLen += times
 		str.consts[symb] += times
+		if str.consts[symb] == 0 {
+			delete(str.consts, symb)
+		}
 	case symbol.IsLetter(symb):
 		str.lettersLen += times
 		str.letters[symb] += times
+		if str.letters[symb] == 0 {
+			delete(str.letters, symb)
+		}
 	}
 }
 
@@ -71,6 +121,10 @@ func (str *Structure) VarsLen() int {
 
 func (str *Structure) VarsRangeLen() int {
 	return len(str.vars)
+}
+
+func (str *Structure) VarsAnLettersRangeLen() int {
+	return len(str.vars) + len(str.letters)
 }
 
 func (str *Structure) Vars() map[symbol.Symbol]int {

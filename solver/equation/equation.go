@@ -9,24 +9,104 @@ import (
 type Equation struct {
 	LeftPart           EqPart
 	RightPart          EqPart
+	structure          Structure
 	isEquidecomposable bool
+	isRegularlyOrdered bool
 }
 
 const EQUALS = "="
 
 func (equation *Equation) Letters() []symbol.Symbol {
-	var lettersMap = make(map[symbol.Symbol]bool)
-	for s, _ := range equation.LeftPart.Structure.Letters() {
-		lettersMap[s] = true
-	}
-	for s, _ := range equation.RightPart.Structure.Letters() {
-		lettersMap[s] = true
-	}
 	var letters = make([]symbol.Symbol, 0)
-	for s, _ := range lettersMap {
+	for s := range equation.structure.letters {
 		letters = append(letters, s)
 	}
 	return letters
+}
+
+func (equation *Equation) Consts() []symbol.Symbol {
+	var consts = make([]symbol.Symbol, 0)
+	for s := range equation.structure.consts {
+		consts = append(consts, s)
+	}
+	return consts
+}
+
+func (equation *Equation) Vars() []symbol.Symbol {
+	var vars = make([]symbol.Symbol, 0)
+	for s := range equation.structure.vars {
+		vars = append(vars, s)
+	}
+	return vars
+}
+
+func (equation *Equation) HasVarOrLetter(s symbol.Symbol) bool {
+	return equation.structure.vars[s] != 0 || equation.structure.letters[s] != 0
+}
+
+func (equation *Equation) HasVarOrLetterForNormal(s symbol.Symbol) (bool, error) {
+	if symbol.IsVar(s) {
+		if !(equation.LeftPart.Structure.vars[s] == 1 &&
+			equation.RightPart.Structure.vars[s] == 1) {
+			return false, nil
+		}
+	} else if symbol.IsLetter(s) {
+		if !(equation.LeftPart.Structure.letters[s] == 1 &&
+			equation.RightPart.Structure.letters[s] == 1) {
+			return false, nil
+		}
+	} else {
+		return false, fmt.Errorf("symbol is not var or letter: %v", s)
+	}
+
+	// checking no more variables in f1 and f2
+	if (equation.structure.varsLen + equation.structure.lettersLen) != 2 {
+		return false, nil
+	}
+	var f1, f2 []symbol.Symbol
+	if equation.LeftPart.Symbols[0] == s && equation.RightPart.Symbols[equation.RightPart.Length-1] == s {
+		f1 = equation.LeftPart.Symbols[1:]
+		f2 = equation.RightPart.Symbols[:equation.RightPart.Length-1]
+	} else if equation.RightPart.Symbols[0] == s && equation.LeftPart.Symbols[equation.LeftPart.Length-1] == s {
+		f2 = equation.RightPart.Symbols[1:]
+		f1 = equation.LeftPart.Symbols[:equation.LeftPart.Length-1]
+	} else {
+		return false, nil
+	}
+
+	return checkSimpleWord(f1) && checkSimpleWord(f2), nil
+}
+
+func checkSimpleWord(s []symbol.Symbol) bool {
+	var sLen = len(s)
+	if sLen <= 1 {
+		return true
+	}
+	var currPrefix []symbol.Symbol
+	var w = s[:1]
+	var wLen = len(w)
+	var equal bool
+	var newI int
+
+	for k := 1; k < sLen; {
+		if k+wLen > sLen {
+			return true
+		}
+		currPrefix = s[k : k+wLen]
+		equal = standart.CheckSymbolArraysEquality(w, currPrefix)
+		if !equal {
+			newI = k + 1
+			if newI > sLen {
+				return true
+			}
+			w = s[:newI]
+			wLen = len(w)
+			k++
+		} else {
+			k += wLen
+		}
+	}
+	return !equal
 }
 
 func (equation *Equation) Check(constsAlphabet *Alphabet, varsAlphabet *Alphabet, lettersAlphabet *Alphabet) error {
@@ -45,7 +125,7 @@ func (equation *Equation) Check(constsAlphabet *Alphabet, varsAlphabet *Alphabet
 }
 
 func (equation *Equation) IsEmpty() bool {
-	return equation.LeftPart.Length == 0 && equation.RightPart.Length == 0
+	return equation.LeftPart.IsEmpty() && equation.RightPart.IsEmpty()
 }
 
 func (equation *Equation) Copy() Equation {
@@ -53,6 +133,7 @@ func (equation *Equation) Copy() Equation {
 	newEq.LeftPart = equation.LeftPart.Copy()
 	newEq.RightPart = equation.RightPart.Copy()
 	newEq.isEquidecomposable = equation.isEquidecomposable
+	newEq.structure = equation.structure.Copy()
 	return newEq
 }
 
@@ -63,13 +144,15 @@ func NewEquation(leftPart []symbol.Symbol, rightPart []symbol.Symbol) Equation {
 }
 
 func (equation *Equation) New() {
-	equation.LeftPart.New()
-	equation.RightPart.New()
+	equation.LeftPart = EmptyEqPart()
+	equation.RightPart = EmptyEqPart()
+	equation.structure = EmptyStructure()
 }
 
 func (equation *Equation) NewFromParts(leftPart []symbol.Symbol, rightPart []symbol.Symbol) {
-	equation.LeftPart.NewFromSymbols(leftPart)
-	equation.RightPart.NewFromSymbols(rightPart)
+	equation.LeftPart = NewEqPartFromSymbols(leftPart)
+	equation.RightPart = NewEqPartFromSymbols(rightPart)
+	equation.structure = MergeStructures(&equation.LeftPart.Structure, &equation.RightPart.Structure)
 }
 
 func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet *Alphabet) error {
@@ -78,24 +161,27 @@ func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet 
 	var err error
 	isEq, i := checkEquation(eq)
 	if isEq {
+		equation.structure = EmptyStructure()
 		eqleftPart := eq[0 : i-1]
 		var leftSymbols []symbol.Symbol
-		var leftSymbolsStruct Structure
+		var leftSymbolsStruct = EmptyStructure()
 		if eqleftPart == "" {
 			leftSymbols = append(leftSymbols, symbol.Empty())
 		} else {
-			leftSymbols, leftSymbolsStruct, err = matchWithAlphabetsWithSpace(eqleftPart, constAlphabet, varsAlphabet)
+			leftSymbols, err = matchWithAlphabetsWithSpace(eqleftPart, constAlphabet, varsAlphabet,
+				&leftSymbolsStruct, &equation.structure)
 			if err != nil {
 				return fmt.Errorf("error matching alphabet: %v", err)
 			}
 		}
 		eqRightPart := eq[i+2:]
 		var rightSymbols []symbol.Symbol
-		var rightSymbolsStruct Structure
+		var rightSymbolsStruct = EmptyStructure()
 		if eqRightPart == "" {
 			rightSymbols = append(rightSymbols, symbol.Empty())
 		} else {
-			rightSymbols, rightSymbolsStruct, err = matchWithAlphabetsWithSpace(eqRightPart, constAlphabet, varsAlphabet)
+			rightSymbols, err = matchWithAlphabetsWithSpace(eqRightPart, constAlphabet, varsAlphabet,
+				&rightSymbolsStruct, &equation.structure)
 			if err != nil {
 				return fmt.Errorf("error matching alphabet: %v", err)
 			}
@@ -125,10 +211,9 @@ func checkEquation(eq string) (bool, int) {
 	return false, 0
 }
 
-func matchWithAlphabetsWithSpace(eqPart string, constAlphabet *Alphabet, varsAlphabet *Alphabet) ([]symbol.Symbol, Structure, error) {
+func matchWithAlphabetsWithSpace(eqPart string, constAlphabet *Alphabet,
+	varsAlphabet *Alphabet, symbolsStructure *Structure, equationStructure *Structure) ([]symbol.Symbol, error) {
 	var symbols []symbol.Symbol
-	var symbolsStructure Structure
-	symbolsStructure.New()
 	var word string
 	var err error
 	var matchType int
@@ -139,30 +224,32 @@ func matchWithAlphabetsWithSpace(eqPart string, constAlphabet *Alphabet, varsAlp
 		} else if word != "" {
 			matchType, err = matchWord(word, varsAlphabet, constAlphabet)
 			if err != nil {
-				return symbols, symbolsStructure, fmt.Errorf("error matching word: %v", err)
+				return symbols, fmt.Errorf("error matching word: %v", err)
 			}
 			symb, err := symbol.NewSymbol(matchType, word)
 			if err != nil {
-				return symbols, symbolsStructure, fmt.Errorf("error creating symbol: %v", err)
+				return symbols, fmt.Errorf("error creating symbol: %v", err)
 			}
 			symbols = append(symbols, symb)
 			symbolsStructure.Add(symb)
+			equationStructure.Add(symb)
 			word = ""
 		}
 	}
 	if word != "" {
 		matchType, err = matchWord(word, varsAlphabet, constAlphabet)
 		if err != nil {
-			return symbols, symbolsStructure, fmt.Errorf("error matching word: %v", err)
+			return symbols, fmt.Errorf("error matching word: %v", err)
 		}
 		symb, err := symbol.NewSymbol(matchType, word)
 		if err != nil {
-			return symbols, symbolsStructure, fmt.Errorf("error creating symbol: %v", err)
+			return symbols, fmt.Errorf("error creating symbol: %v", err)
 		}
 		symbols = append(symbols, symb)
 		symbolsStructure.Add(symb)
+		equationStructure.Add(symb)
 	}
-	return symbols, symbolsStructure, nil
+	return symbols, nil
 }
 
 func matchWord(word string, varsAlphabet *Alphabet, constAlphabet *Alphabet) (int, error) {
@@ -434,6 +521,7 @@ func (equation *Equation) SubstituteVarsWithEmpty() (Equation, map[symbol.Symbol
 			if symbol.IsConst(sym) || symbol.IsLetter(sym) {
 				resultEquation.LeftPart.Symbols = append(resultEquation.LeftPart.Symbols, sym)
 				resultEquation.LeftPart.Structure.Add(sym)
+				resultEquation.structure.Add(sym)
 			} else {
 				varsMap[sym] = true
 			}
@@ -450,6 +538,7 @@ func (equation *Equation) SubstituteVarsWithEmpty() (Equation, map[symbol.Symbol
 			if symbol.IsConst(sym) || symbol.IsLetter(sym) {
 				resultEquation.RightPart.Symbols = append(resultEquation.RightPart.Symbols, sym)
 				resultEquation.RightPart.Structure.Add(sym)
+				resultEquation.structure.Add(sym)
 			} else {
 				varsMap[sym] = true
 			}
@@ -476,6 +565,7 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 			resultEquation.LeftPart.Symbols = append(resultEquation.LeftPart.Symbols, sym)
 			resultEquation.LeftPart.Length++
 			resultEquation.LeftPart.Structure.Add(sym)
+			resultEquation.structure.Add(sym)
 		}
 	}
 	for _, sym := range equation.RightPart.Symbols {
@@ -487,11 +577,13 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 			resultEquation.RightPart.Symbols = append(resultEquation.RightPart.Symbols, sym)
 			resultEquation.RightPart.Length++
 			resultEquation.RightPart.Structure.Add(sym)
+			resultEquation.structure.Add(sym)
 		}
 	}
 	for _, sym := range substitution.RightPart() {
 		resultEquation.LeftPart.Structure.AddTimes(sym, lCounter)
 		resultEquation.RightPart.Structure.AddTimes(sym, rCounter)
+		resultEquation.structure.AddTimes(sym, lCounter+rCounter)
 	}
 	resultEquation.Reduce()
 	return resultEquation
@@ -505,8 +597,11 @@ func (equation *Equation) Reduce() {
 		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[i] {
 			break
 		}
-		equation.LeftPart.Structure.Sub(equation.LeftPart.Symbols[i])
-		equation.RightPart.Structure.Sub(equation.RightPart.Symbols[i])
+		s := equation.LeftPart.Symbols[i]
+		equation.LeftPart.Structure.Sub(s)
+		equation.RightPart.Structure.Sub(s)
+		equation.structure.SubTimes(s, 2)
+
 	}
 	if i > 0 {
 		equation.RightPart.Symbols = equation.RightPart.Symbols[i:]
@@ -569,9 +664,7 @@ func (equation *Equation) FullReduceEmpty() {
 
 func (equation *Equation) SplitByEquidecomposability() EqSystem {
 	equation.isEquidecomposable = checkEquidecomposability(equation.LeftPart.Symbols, equation.RightPart.Symbols)
-	defaultSystem := EqSystem{
-		Equations: []Equation{*equation}, Size: 1,
-	}
+	defaultSystem := SystemFromEquation(*equation)
 	if equation.LeftPart.Length <= 1 || equation.RightPart.Length <= 1 {
 		return defaultSystem
 	}
@@ -603,26 +696,8 @@ func (equation *Equation) SplitByEquidecomposability() EqSystem {
 }
 
 func createSystem(firstPart []symbol.Symbol, secondPart []symbol.Symbol, firstPartEnd []symbol.Symbol, secondPartEnd []symbol.Symbol) EqSystem {
-	var fLeftPart, fRightPart EqPart
-	var sLeftPart, sRightPart EqPart
-	fLeftPart.NewFromSymbols(firstPart)
-	fRightPart.NewFromSymbols(secondPart)
-	sLeftPart.NewFromSymbols(firstPartEnd)
-	sRightPart.NewFromSymbols(secondPartEnd)
-	resultSystem := EqSystem{
-		Equations: []Equation{
-			{
-				LeftPart:           fLeftPart,
-				RightPart:          fRightPart,
-				isEquidecomposable: true,
-			},
-		},
-		Size: 1,
-	}
-	endEq := Equation{
-		LeftPart:  sLeftPart,
-		RightPart: sRightPart,
-	}
+	resultSystem := SystemFromEquation(NewEquation(firstPart, secondPart))
+	endEq := NewEquation(firstPartEnd, secondPartEnd)
 	endSystem := endEq.SplitByEquidecomposability()
 	resultSystem.Equations = append(endSystem.Equations, resultSystem.Equations...)
 	resultSystem.Size += endSystem.Size
@@ -741,6 +816,7 @@ func (equation *Equation) IsRegularlyOrdered() bool {
 		}
 	}
 	if i == equation.LeftPart.Length && j == equation.RightPart.Length {
+		equation.isRegularlyOrdered = true
 		return true
 	}
 	return false
