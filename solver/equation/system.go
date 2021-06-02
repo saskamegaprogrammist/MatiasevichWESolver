@@ -308,7 +308,6 @@ func (es *EquationsSystem) SplitIntoRegOrdered() (EquationsSystem, EquationsSyst
 }
 
 func (es *EquationsSystem) NeedsSimplification() (bool, error) {
-	es.Print()
 	if !es.hasOnlyRegOrdered {
 		return false, fmt.Errorf("equation system doesn't consist of regulary ordered equations")
 	}

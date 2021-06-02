@@ -25,7 +25,7 @@ func scanInput(scanner *bufio.Scanner) error {
 	return handleScannerError(scanner)
 }
 
-func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bool) {
+func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bool, bool) {
 	fullGraph := flag.Bool("full_graph", false, "print full graph")
 	fullSystem := flag.Bool("full_system", false, "solve full system")
 	inputFile := flag.String("input_file", "", "input filename")
@@ -36,12 +36,15 @@ func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bo
 	outputDir := flag.String("output_directory", ".", "output directory")
 	splitByEquidecomposability := flag.Bool("use_eq_split", false, "split equation into system")
 	lengthAnalysis := flag.Bool("use_length_analysis", false, "use length analysis")
+	simplification := flag.Bool("use_simplification", false, "use length analysis")
+
 	flag.Parse()
-	return *fullGraph, *inputFile, *inputDir, *cycleRange, *makePng, *outputDir, *makeDot, *splitByEquidecomposability, *fullSystem, *lengthAnalysis
+	return *fullGraph, *inputFile, *inputDir, *cycleRange, *makePng,
+		*outputDir, *makeDot, *splitByEquidecomposability, *fullSystem, *lengthAnalysis, *simplification
 }
 
 func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
-	cycleRange int, outputDir string, splitByEq bool, fullSystem bool, lengthAnalysis bool) {
+	cycleRange int, outputDir string, splitByEq bool, fullSystem bool, lengthAnalysis bool, simplification bool) {
 	var err error
 	scanner := bufio.NewScanner(inputSource)
 	err = handleScannerError(scanner)
@@ -77,7 +80,7 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 		FullGraph:                  fullGraph,
 		AlgorithmMode:              algorithmType,
 		FullSystem:                 fullSystem,
-		NeedsSimplification:        true,
+		NeedsSimplification:        simplification,
 	}
 	printOptions := solver.PrintOptions{
 		Dot:       makeDot,
@@ -98,7 +101,8 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 
 func main() {
 	matlog.LoggerSetup()
-	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, makeDot, splitByEquidecomposability, fullSystem, lengthAnalysis := parseFLags()
+	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, makeDot,
+		splitByEquidecomposability, fullSystem, lengthAnalysis, simplification := parseFLags()
 
 	if inputDirName != "" {
 		inputDir, err := os.Open(inputDirName)
@@ -118,15 +122,18 @@ func main() {
 			if err != nil {
 				logger.Errorf("error opening input file: %v", err)
 			}
-			process(inputFile, fullGraph, makePng, makeDot, cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis)
+			process(inputFile, fullGraph, makePng, makeDot,
+				cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis, simplification)
 		}
 	} else if inputFilename != "" {
 		inputFile, err := os.Open(inputFilename)
 		if err != nil {
 			logger.Errorf("error opening input file: %v", err)
 		}
-		process(inputFile, fullGraph, makePng, makeDot, cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis)
+		process(inputFile, fullGraph, makePng, makeDot,
+			cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis, simplification)
 	} else {
-		process(os.Stdin, fullGraph, makePng, makeDot, cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis)
+		process(os.Stdin, fullGraph, makePng, makeDot,
+			cycleRange, outputDir, splitByEquidecomposability, fullSystem, lengthAnalysis, simplification)
 	}
 }

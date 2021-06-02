@@ -35,7 +35,7 @@ type Solver struct {
 func (solver *Solver) InitWoEquation(constantsAlph string, varsAlph string,
 	printOptions PrintOptions,
 	solveOptions SolveOptions) error {
-	return solver.Init(constantsAlph, varsAlph, "", printOptions, solveOptions)
+	return solver.Init(constantsAlph, varsAlph, EMPTY, printOptions, solveOptions)
 }
 
 func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
@@ -62,6 +62,9 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 		if err != nil {
 			return fmt.Errorf("error parsing equation: %v", err)
 		}
+
+		solver.equation.Print()
+		fmt.Println(solveOptions.AlgorithmMode)
 	}
 
 	solver.printOptions = printOptions
@@ -90,8 +93,7 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 	if solver.solveOptions.CycleRange == 0 {
 		solver.solveOptions.CycleRange = cycle_range
 	}
-	solver.equation.Print()
-	fmt.Println(solveOptions.AlgorithmMode)
+
 	return nil
 }
 

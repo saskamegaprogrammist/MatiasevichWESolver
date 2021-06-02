@@ -52,7 +52,7 @@ func (s *Simplifier) Simplify(node *Node) error {
 		}
 		resSystem = equation.NewDisjunctionSystem(conjunctions)
 		node.simplified = resSystem
-		resSystem.Print()
+		//resSystem.Print()
 	} else {
 		var resSystem equation.EquationsSystem
 		resSystem, err = s.simplifyNode(node)
@@ -60,7 +60,7 @@ func (s *Simplifier) Simplify(node *Node) error {
 			return fmt.Errorf("error simplifying node without letters: %v", err)
 		}
 		node.simplified = resSystem
-		resSystem.Print()
+		//resSystem.Print()
 	}
 	return nil
 }
@@ -265,7 +265,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range disjunctions {
-		disj.Print()
+		//disj.Print()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -383,7 +383,7 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 
 			es := equation.SystemFromValues(sVar, values)
 			node.SetSimplifiedRepresentation(es)
-			node.simplified.Print()
+			//node.simplified.Print()
 
 			*eqSystems = append(*eqSystems, es)
 			return nil
@@ -417,7 +417,7 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 
 			}
 			node.SetSimplifiedRepresentation(es)
-			node.simplified.Print()
+			//node.simplified.Print()
 
 			node.UnsetIsSubgraphRoot()
 			*eqSystems = append(*eqSystems, es)

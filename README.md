@@ -10,6 +10,9 @@ Matiasevich word equations solver
 - use_length_analysis - 
 *boolean* use length analysis
 
+- use_simplification - 
+*boolean* use simplification for regularly ordered equations
+
 - full_graph - 
 *boolean* create full graph description
 
@@ -56,5 +59,5 @@ Matiasevich word equations solver
 
 - l g l = A A Y - *equation*
 - Standard - *algorithm type*
-- took time: 307.88µs - *time took algorithm to run excluding png creation*
+- took time: 307.88µs - *time took algorithm to run excluding dot and png creation*
 - got solution: TRUE - *answer, whether algorithm has solutions or not*
