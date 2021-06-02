@@ -255,7 +255,7 @@ func (solver *Solver) Solve() (string, time.Duration, error) {
 			solver.hasSolution = hasSolution
 			return solver.getAnswer(), sumTime, err
 		} else {
-			duration, err = solver.solveEquationAsSystem(solver.equation)
+			duration, err = solver.solveEquation(solver.equation)
 			if err != nil {
 				return "", duration, fmt.Errorf("error solving regularly ordered equation as system : %v", err)
 			}
@@ -291,6 +291,7 @@ func (solver *Solver) solveEquationTimes(equation equation.Equation, times int) 
 	solver.clear() // if we are solving a system, we should clear solving results
 
 	magicPrefix := strings.Repeat(MAGIC_PREFIX, times)
+	solver.solveOptions.CycleRange += len(magicPrefix)
 	tree := NewTreeWEquation(magicPrefix+"0", equation)
 	err = solver.solveSystem(&tree)
 	if err != nil {
@@ -403,7 +404,6 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		return false, nil
 	}
 	tree := NewTreeWEquationsSystem("0", regOrdered)
-	solver.solveOptions.FullGraph = true
 	err = solver.simplifier.Simplify(&tree)
 	if err != nil {
 		return false, fmt.Errorf("error simplifying: %v", err)
@@ -412,9 +412,8 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		solver.createTrueNode(node)
 		return true, nil
 	}
-	var newEs equation.EquationsSystem
 	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
-		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{newEs, simple})
+		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{tree.simplified, simple})
 		newEs.Simplify()
 		child := NewNodeWEquationsSystem(equation.Substitution{},
 			"s"+node.number, node, newEs)
@@ -568,21 +567,17 @@ func (solver *Solver) solveSystem(node *Node) error {
 			node.SetChildren([]*Node{&firstChild, &secondChild})
 		}
 		if checkThirdRuleLeft(firstEquation) || checkThirdRuleRight(firstEquation) {
-			newES, subsVars := node.value.SubstituteVarsWithEmpty()
+			subsVars := firstEquation.Vars()
 			var childL *Node
-			for v, _ := range subsVars {
+			for _, v := range subsVars {
 				if childL != nil {
 					node = childL
 				}
 				subst := equation.NewSubstitution(v, []symbol.Symbol{symbol.Empty()})
-				// Writing original equation for every node
-				child := NewNodeWEquationsSystem(subst, node.number+"8", node, node.value)
+				child := newEquationSystemWithSubstitution(node, &subst, node.number+"8")
 				node.SetChildren([]*Node{&child})
 				childL = &child
 			}
-			// Writing equation with all substituted vars
-			node.children[0].value = newES
-
 		}
 	}
 

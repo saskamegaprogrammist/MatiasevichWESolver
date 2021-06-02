@@ -26,6 +26,7 @@ func (s *Simplifier) Init(constantsAlph string, varsAlph string,
 func (s *Simplifier) Simplify(node *Node) error {
 	var err error
 	if !node.WasUnfolded() {
+		s.solver.clear()
 		err = s.solver.solveSystem(node)
 		if err != nil {
 			return fmt.Errorf("error solving node: %v", err)
