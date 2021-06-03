@@ -590,7 +590,7 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 }
 
 func (equation *Equation) Reduce() {
-	equation.reduceEmptyFromBeginning()
+	equation.FullReduceEmpty()
 	minLen := standart.Min(equation.LeftPart.Length, equation.RightPart.Length)
 	i := 0
 	for ; i < minLen; i++ {

@@ -21,6 +21,58 @@ func (es *EquationsSystem) Size() int {
 	return len(es.compounds)
 }
 
+func (es *EquationsSystem) SplitByEquideComposability() (bool, EquationsSystem) {
+	var splitted bool
+	if es.IsEmpty() {
+		return splitted, EquationsSystem{}
+	}
+	var newEs EquationsSystem
+	if es.IsSingleEquation() {
+		var newEqs = make([]Equation, 0)
+		system := es.value.SplitByEquidecomposability()
+		if system.Size > 1 {
+			splitted = true
+		}
+		for _, s := range system.Equations {
+			if !s.CheckEquality() {
+				newEqs = append(newEqs, s)
+			}
+		}
+		if len(newEqs) == 0 {
+			return splitted, EquationsSystem{}
+		}
+		if len(newEqs) == 1 {
+			return splitted, NewSingleEquation(newEqs[0])
+		}
+		newEs = NewConjunctionSystemFromEquations(newEqs)
+
+	}
+	if es.IsConjunction() {
+		var newCompounds = make([]EquationsSystem, 0)
+		for _, c := range es.compounds {
+			wasSplitted, newCompound := c.SplitByEquideComposability()
+			splitted = splitted || wasSplitted
+			if !newCompound.IsEmpty() {
+				newCompounds = append(newCompounds, newCompound)
+			}
+		}
+		newEs = NewConjunctionSystem(newCompounds)
+	}
+	if es.IsDisjunction() {
+		var newCompounds = make([]EquationsSystem, 0)
+		for _, c := range es.compounds {
+			wasSplitted, newCompound := c.SplitByEquideComposability()
+			splitted = splitted || wasSplitted
+			if !newCompound.IsEmpty() {
+				newCompounds = append(newCompounds, newCompound)
+			}
+		}
+		newEs = NewDisjunctionSystem(newCompounds)
+	}
+	newEs.Reduce()
+	return splitted, newEs
+}
+
 func (es *EquationsSystem) Compounds() []EquationsSystem {
 	if es.IsSingleEquation() {
 		return []EquationsSystem{*es}

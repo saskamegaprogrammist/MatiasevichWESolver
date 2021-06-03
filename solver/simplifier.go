@@ -31,6 +31,10 @@ func (s *Simplifier) Simplify(node *Node) error {
 		if err != nil {
 			return fmt.Errorf("error solving node: %v", err)
 		}
+		if !node.HasTrueChildren() {
+			node.simplified = node.value
+			return nil
+		}
 	}
 
 	if len(node.value.Equation().Letters()) != 0 {

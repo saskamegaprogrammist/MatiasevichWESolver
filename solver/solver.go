@@ -411,7 +411,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		return false, fmt.Errorf("error simplifying: %v", err)
 	}
 	if !tree.HasTrueChildren() {
-		solver.createTrueNode(node)
+		solver.createFalseNode(node, REGULAR_FALSE)
 		return true, nil
 	}
 	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
@@ -503,112 +503,127 @@ func (solver *Solver) solveSystem(node *Node) error {
 		return nil
 	}
 
-	var simplified bool
+	var splitted bool
 
-	if solver.solveOptions.NeedsSimplification {
-		simplified, err = solver.simplifyNode(node)
-		if err != nil {
-			return fmt.Errorf("error simplifying node: %v", err)
+	if solver.solveOptions.SplitByEquidecomposability {
+		var newEs equation.EquationsSystem
+		splitted, newEs = node.value.SplitByEquideComposability()
+		if splitted {
+			newEs.Simplify()
+			child := NewNodeWEquationsSystem(equation.Substitution{},
+				"z"+node.number, node, newEs)
+			node.SetChildren([]*Node{&child})
 		}
 	}
 
-	if !simplified {
-		firstEquation := node.value.Equation()
+	if !splitted {
+		var simplified bool
 
-		if solver.algorithmType == FINITE {
-			if checkFirstRuleFinite(firstEquation) {
-				substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
-				child := newEquationSystemWithSubstitution(node, &substitute, "a"+node.number)
-				node.SetChildren([]*Node{&child})
+		if solver.solveOptions.NeedsSimplification {
+			simplified, err = solver.simplifyNode(node)
+			if err != nil {
+				return fmt.Errorf("error simplifying node: %v", err)
 			}
-			if checkSecondRuleLeftFinite(firstEquation) {
-				substitute := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0]})
-				child := newEquationSystemWithSubstitution(node, &substitute, "b"+node.number)
-				node.SetChildren([]*Node{&child})
+		}
+
+		if !simplified {
+			firstEquation := node.value.Equation()
+
+			if solver.algorithmType == FINITE {
+				if checkFirstRuleFinite(firstEquation) {
+					substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+					child := newEquationSystemWithSubstitution(node, &substitute, "a"+node.number)
+					node.SetChildren([]*Node{&child})
+				}
+				if checkSecondRuleLeftFinite(firstEquation) {
+					substitute := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0]})
+					child := newEquationSystemWithSubstitution(node, &substitute, "b"+node.number)
+					node.SetChildren([]*Node{&child})
+				}
+				if checkSecondRuleRightFinite(firstEquation) {
+					substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+					child := newEquationSystemWithSubstitution(node, &substitute, "c"+node.number)
+					node.SetChildren([]*Node{&child})
+				}
+				if checkFourthRuleLeft(firstEquation) {
+					substFirst := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+					firstChild := newEquationSystemWithSubstitution(node, &substFirst, "d"+node.number)
+
+					substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]})
+					secondChild := newEquationSystemWithSubstitution(node, &substSecond, "e"+node.number)
+
+					node.SetChildren([]*Node{&firstChild, &secondChild})
+				}
+				if checkFourthRuleRight(firstEquation) {
+					substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
+					firstChild := newEquationSystemWithSubstitution(node, &substFirst, "f"+node.number)
+
+					substSecond := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]})
+					secondChild := newEquationSystemWithSubstitution(node, &substSecond, "g"+node.number)
+
+					node.SetChildren([]*Node{&firstChild, &secondChild})
+				}
 			}
-			if checkSecondRuleRightFinite(firstEquation) {
-				substitute := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
-				child := newEquationSystemWithSubstitution(node, &substitute, "c"+node.number)
-				node.SetChildren([]*Node{&child})
+			if checkFirstRule(firstEquation) {
+				var newValsFirst []symbol.Symbol
+				if solver.algorithmType == STANDARD {
+					newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]}
+				}
+				if solver.algorithmType == FINITE {
+					word := solver.getLetter()
+					newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], word, firstEquation.LeftPart.Symbols[0]}
+				}
+				substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], newValsFirst)
+				firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"1")
+
+				var newValsSecond []symbol.Symbol
+				if solver.algorithmType == STANDARD {
+					newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]}
+				}
+				if solver.algorithmType == FINITE {
+					word := solver.getLetter()
+					newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], word, firstEquation.RightPart.Symbols[0]}
+				}
+
+				substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], newValsSecond)
+				secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"2")
+
+				substThird := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
+				thirdChild := newEquationSystemWithSubstitution(node, &substThird, node.number+"3")
+
+				node.SetChildren([]*Node{&thirdChild, &firstChild, &secondChild})
 			}
-			if checkFourthRuleLeft(firstEquation) {
+
+			if checkSecondRuleLeft(firstEquation) {
 				substFirst := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-				firstChild := newEquationSystemWithSubstitution(node, &substFirst, "d"+node.number)
+				firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"4")
 
 				substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]})
-				secondChild := newEquationSystemWithSubstitution(node, &substSecond, "e"+node.number)
+				secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"5")
 
 				node.SetChildren([]*Node{&firstChild, &secondChild})
 			}
-			if checkFourthRuleRight(firstEquation) {
+			if checkSecondRuleRight(firstEquation) {
 				substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-				firstChild := newEquationSystemWithSubstitution(node, &substFirst, "f"+node.number)
+				firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"6")
 
 				substSecond := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]})
-				secondChild := newEquationSystemWithSubstitution(node, &substSecond, "g"+node.number)
+				secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"7")
 
 				node.SetChildren([]*Node{&firstChild, &secondChild})
 			}
-		}
-		if checkFirstRule(firstEquation) {
-			var newValsFirst []symbol.Symbol
-			if solver.algorithmType == STANDARD {
-				newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]}
-			}
-			if solver.algorithmType == FINITE {
-				word := solver.getLetter()
-				newValsFirst = []symbol.Symbol{firstEquation.RightPart.Symbols[0], word, firstEquation.LeftPart.Symbols[0]}
-			}
-			substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], newValsFirst)
-			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"1")
-
-			var newValsSecond []symbol.Symbol
-			if solver.algorithmType == STANDARD {
-				newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]}
-			}
-			if solver.algorithmType == FINITE {
-				word := solver.getLetter()
-				newValsSecond = []symbol.Symbol{firstEquation.LeftPart.Symbols[0], word, firstEquation.RightPart.Symbols[0]}
-			}
-
-			substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], newValsSecond)
-			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"2")
-
-			substThird := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0]})
-			thirdChild := newEquationSystemWithSubstitution(node, &substThird, node.number+"3")
-
-			node.SetChildren([]*Node{&thirdChild, &firstChild, &secondChild})
-		}
-
-		if checkSecondRuleLeft(firstEquation) {
-			substFirst := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"4")
-
-			substSecond := equation.NewSubstitution(firstEquation.RightPart.Symbols[0], []symbol.Symbol{firstEquation.LeftPart.Symbols[0], firstEquation.RightPart.Symbols[0]})
-			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"5")
-
-			node.SetChildren([]*Node{&firstChild, &secondChild})
-		}
-		if checkSecondRuleRight(firstEquation) {
-			substFirst := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{symbol.Empty()})
-			firstChild := newEquationSystemWithSubstitution(node, &substFirst, node.number+"6")
-
-			substSecond := equation.NewSubstitution(firstEquation.LeftPart.Symbols[0], []symbol.Symbol{firstEquation.RightPart.Symbols[0], firstEquation.LeftPart.Symbols[0]})
-			secondChild := newEquationSystemWithSubstitution(node, &substSecond, node.number+"7")
-
-			node.SetChildren([]*Node{&firstChild, &secondChild})
-		}
-		if checkThirdRuleLeft(firstEquation) || checkThirdRuleRight(firstEquation) {
-			subsVars := firstEquation.Vars()
-			var childL *Node
-			for _, v := range subsVars {
-				if childL != nil {
-					node = childL
+			if checkThirdRuleLeft(firstEquation) || checkThirdRuleRight(firstEquation) {
+				subsVars := firstEquation.Vars()
+				var childL *Node
+				for _, v := range subsVars {
+					if childL != nil {
+						node = childL
+					}
+					subst := equation.NewSubstitution(v, []symbol.Symbol{symbol.Empty()})
+					child := newEquationSystemWithSubstitution(node, &subst, node.number+"8")
+					node.SetChildren([]*Node{&child})
+					childL = &child
 				}
-				subst := equation.NewSubstitution(v, []symbol.Symbol{symbol.Empty()})
-				child := newEquationSystemWithSubstitution(node, &subst, node.number+"8")
-				node.SetChildren([]*Node{&child})
-				childL = &child
 			}
 		}
 	}
