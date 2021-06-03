@@ -6,7 +6,7 @@ import (
 )
 
 var filename = "output.log"
-var verbose = false
+var verbose = true
 var logFile *os.File
 
 func LoggerSetup() {
