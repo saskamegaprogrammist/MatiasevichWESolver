@@ -448,6 +448,36 @@ func (solver *Solver) solveSystem(node *Node) error {
 		return nil
 	}
 
+	// checking length
+
+	fE := node.value.Equation()
+
+	if solver.solveOptions.LengthAnalysis && fE != nil {
+		checkedLength, replaceSymbol, replaceLen := checkLengthRules(fE)
+		if checkedLength {
+			if replaceSymbol != nil {
+				var newLetters []symbol.Symbol
+				for i := 0; i < replaceLen; i++ {
+					newLetters = append(newLetters, solver.getLetter())
+				}
+				substitute := equation.NewSubstitution(replaceSymbol, newLetters)
+				eq := node.value.Substitute(&substitute)
+				eq.Simplify()
+				fequation := eq.Equation()
+				if solver.algorithmType == STANDARD && !(fequation == nil ||
+					fequation.RightPart.IsEmpty() || fequation.LeftPart.IsEmpty()) {
+				} else {
+					child := NewNodeWEquationsSystem(substitute, "r"+node.number, node, eq)
+					node.SetChildren([]*Node{&child})
+					node = &child
+				}
+			}
+		} else {
+			solver.createFalseNode(node, FAILED_LENGTH_ANALISYS)
+			return nil
+		}
+	}
+
 	//fmt.Println(node.number)
 	if checkInequality(node) {
 		solver.createFalseNode(node, REGULAR_FALSE)

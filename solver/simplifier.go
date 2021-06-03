@@ -262,9 +262,12 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 		return resultEquationSystem, nil
 	}
 	disjunctions := getAllDisjunctions(eqSystems)
+	ds := equation.NewDisjunctionSystem(disjunctions)
+	ds.Simplify()
+	ds.Reduce()
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
-	for _, disj := range disjunctions {
+	for _, disj := range ds.Compounds() {
 		//disj.Print()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)

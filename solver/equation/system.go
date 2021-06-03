@@ -22,6 +22,9 @@ func (es *EquationsSystem) Size() int {
 }
 
 func (es *EquationsSystem) Compounds() []EquationsSystem {
+	if es.IsSingleEquation() {
+		return []EquationsSystem{*es}
+	}
 	return es.compounds
 }
 
@@ -72,6 +75,9 @@ func (es *EquationsSystem) GetEquations() []Equation {
 
 // gets the first equation in system
 func (es *EquationsSystem) Equation() *Equation {
+	if es.IsEmpty() {
+		return nil
+	}
 	if es.IsSingleEquation() {
 		return &es.value
 	}
@@ -94,6 +100,9 @@ func (es *EquationsSystem) Substitute(substitute *Substitution) EquationsSystem 
 			continue
 		}
 		newCompounds = append(newCompounds, newCompound)
+	}
+	if len(newCompounds) == 0 {
+		return EquationsSystem{}
 	}
 	newEs := EquationsSystem{
 		value:             Equation{},
