@@ -272,7 +272,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
-		//disj.Print()
+		disj.Print()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -349,7 +349,9 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 			return fmt.Errorf("error copying child graph: %v", err)
 		}
 		if newChildNode.HasTrueChildrenAndBackCycles() {
-			copyNode.AddSubstituteVar(newChildNode.substitution.LeftPart())
+			if !newChildNode.Substitution().IsEmpty() {
+				copyNode.AddSubstituteVar(newChildNode.substitution.LeftPart())
+			}
 			copyNode.children = append(copyNode.children, &newChildNode)
 		}
 	}
@@ -398,6 +400,7 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			node.SetIsSubgraphRoot()
 
 			values, _, _, needsReduce := s.walkWithSymbolBackCycled(node)
+			fmt.Println(values)
 			var valuesLen = len(values)
 			var es equation.EquationsSystem
 			var eqType int = equation.EQ_TYPE_SIMPLE
@@ -452,10 +455,12 @@ func (s *Simplifier) walkWithSymbol(node *Node) equation.VariableValues {
 			continue
 		}
 		chValues = s.walkWithSymbol(ch)
-		if chValues.IsEmpty() {
-			values.AddValue([]symbol.Symbol{ch.Substitution().RightPart()[0]})
-		} else {
-			values.AddToEachValue(chValues, []symbol.Symbol{ch.Substitution().RightPart()[0]})
+		if !ch.Substitution().IsEmpty() {
+			if chValues.IsEmpty() {
+				values.AddValue([]symbol.Symbol{ch.Substitution().RightPart()[0]})
+			} else {
+				values.AddToEachValue(chValues, []symbol.Symbol{ch.Substitution().RightPart()[0]})
+			}
 		}
 	}
 	return values
@@ -483,13 +488,17 @@ func (s *Simplifier) walkWithSymbolBackCycled(node *Node) ([]equation.VariableVa
 		if ch.HasOnlyFalseChildren() {
 			continue
 		}
-		size++
 		chValues, currParentNode, metEmptySubstNodebefore, hasOneChar := s.walkWithSymbolBackCycled(ch)
+		ch.value.Print()
+		fmt.Println(chValues)
 		filteredChildren = append(filteredChildren, chValues)
 		currParentNodes = append(currParentNodes, currParentNode)
 		metEmptyBefore = append(metEmptyBefore, metEmptySubstNodebefore)
 		hasOneCharValues = append(hasOneCharValues, hasOneChar)
-		newLetters = append(newLetters, ch.NewLetter())
+		if !ch.Substitution().IsEmpty() {
+			newLetters = append(newLetters, ch.NewLetter())
+		}
+		size++
 
 		if currParentNode != nil {
 			parentNode = currParentNode
@@ -499,31 +508,55 @@ func (s *Simplifier) walkWithSymbolBackCycled(node *Node) ([]equation.VariableVa
 		if v {
 			index = 1
 			values = append(values, equation.NewVariableValues())
+			for i := 0; i < size; i++ {
+				filteredChildren[i] = append(filteredChildren[i], equation.NewVariableValues())
+			}
 			break
 		}
 	}
+	if index == 1 {
+		for i := 0; i < size; i++ {
+			values[0].AddToSecondValue(filteredChildren[i][0], []symbol.Symbol{})
+		}
+	}
+	node.value.Print()
+	fmt.Println(newLetters)
 	for i := 0; i < size; i++ {
-
+		//fmt.Println(len(values))
+		//fmt.Println(len(filteredChildren))
+		//fmt.Println(index)
+		//fmt.Println(filteredChildren[0])
 		if filteredChildren[i][index].IsEmpty() {
-			// means it was child who leads to true node with empty substitution
-			if currParentNodes[i] == nil {
-				// adding empty symbol
-				metEmptySubstNode = true
-				values[index].AddValueToHead([]symbol.Symbol{newLetters[i]})
-			} else {
-				// means it was child who leads to cycle head
-				values[index].AddValue([]symbol.Symbol{newLetters[i]})
+			if len(newLetters) != 0 {
+				// means it was child who leads to true node with empty substitution
+				if currParentNodes[i] == nil {
+					// adding empty symbol
+					metEmptySubstNode = true
+					values[index].AddValueToHead([]symbol.Symbol{newLetters[i]})
+				} else {
+					// means it was child who leads to cycle head
+					values[index].AddValue([]symbol.Symbol{newLetters[i]})
+				}
 			}
 
 		} else {
 			if metEmptyBefore[i] {
 				metEmptySubstNode = true
-				values[index].AddToFirstValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})
+				if len(newLetters) != 0 {
+					values[index].AddToFirstValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})
+				} else {
+					values[index].AddToFirstValue(filteredChildren[i][index], []symbol.Symbol{})
+				}
 			} else {
-				values[index].AddToSecondValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})
+				if len(newLetters) != 0 {
+					values[index].AddToSecondValue(filteredChildren[i][index], []symbol.Symbol{newLetters[i]})
+				} else {
+					values[index].AddToSecondValue(filteredChildren[i][index], []symbol.Symbol{})
+				}
 			}
 		}
 	}
+
 	if index == 1 || (parentNode != nil && parentNode.number == node.number) {
 		return values, nil, metEmptySubstNode, true
 	}

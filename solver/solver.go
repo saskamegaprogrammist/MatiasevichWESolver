@@ -73,7 +73,7 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 	if solveOptions.NeedsSimplification {
 		err = solver.simplifier.Init(constantsAlph, varsAlph, PrintOptions{}, SolveOptions{
 			LengthAnalysis:             false,
-			SplitByEquidecomposability: false,
+			SplitByEquidecomposability: true,
 			CycleRange:                 10,
 			FullGraph:                  true,
 			FullSystem:                 false,
@@ -657,7 +657,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 	node.FillSubstituteMapsFromChildren()
 	// needs to go afterwards because of the map filling
 	for _, child := range node.children {
-		if child.HasTrueChildren() {
+		if child.HasTrueChildren() && !child.substitution.IsEmpty() {
 			node.AddSubstituteVar(child.substitution.LeftPart())
 		}
 		if solver.algorithmType == FINITE && solver.solveOptions.SaveLettersSubstitutions {
