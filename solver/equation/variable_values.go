@@ -12,12 +12,6 @@ func NewVariableValuesArray() []VariableValues {
 	return make([]VariableValues, 0)
 }
 
-func (vv *VariableValues) SetVariableValues(values [][]symbol.Symbol) {
-	if values != nil {
-		*vv = values
-	}
-}
-
 func (vv *VariableValues) IsEmpty() bool {
 	return vv == nil || len(*vv) == 0
 }

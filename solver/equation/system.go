@@ -474,6 +474,31 @@ func CharacteristicEquation(sym symbol.Symbol, values VariableValues, eqType int
 	}, nil
 }
 
+func CharacteristicEquationRefactored(sym symbol.Symbol, values CharacteristicValues, eqType int) (EquationsSystem, error) {
+	var leftPart, rightPart []symbol.Symbol
+	if eqType == EQ_TYPE_SIMPLE {
+		leftPart = append(leftPart, values.F1...)
+		leftPart = append(leftPart, values.F2...)
+	} else if eqType == EQ_TYPE_W_EMPTY {
+		leftPart = append(leftPart, values.F2...)
+		leftPart = append(leftPart, values.F1...)
+	}
+
+	leftPart = append(leftPart, sym)
+	rightPart = append(rightPart, sym)
+	rightPart = append(rightPart, values.F2...)
+	rightPart = append(rightPart, values.F1...)
+
+	var eq Equation
+	eq.NewFromParts(leftPart, rightPart)
+	eq.FullReduceEmpty()
+	return EquationsSystem{
+		value:      eq,
+		compounds:  nil,
+		systemType: SINGLE_EQUATION,
+	}, nil
+}
+
 func SystemFromValues(leftSym symbol.Symbol, rightPart VariableValues) EquationsSystem {
 	if rightPart.Size() == 1 {
 		var eq Equation

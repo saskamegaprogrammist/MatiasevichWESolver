@@ -76,8 +76,8 @@ func (s *Simplifier) simplifyNode(node *Node) (equation.EquationsSystem, error) 
 	if len(symbols) == 0 {
 		return equation.NewSingleEquation(*(node.value.Equation())), nil
 	}
-	subgraphSymbol := symbols[len(symbols)-1]
-	resSystem, err = s.simplify(node, subgraphSymbol)
+	subgraphSymbol := symbols[0]
+	resSystem, err = s.simplify(node, subgraphSymbol, []symbol.Symbol{subgraphSymbol})
 	if err != nil {
 		return resSystem, fmt.Errorf("error during simplification: %v", err)
 	}
@@ -254,7 +254,7 @@ func (s *Simplifier) removeTrueNodesWLetters(node *Node) {
 	}
 }
 
-func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.EquationsSystem, error) {
+func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBeen []symbol.Symbol) (equation.EquationsSystem, error) {
 	var resultEquationSystem equation.EquationsSystem
 	var err error
 	var eqSystems []equation.EquationsSystem
@@ -285,11 +285,24 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol) (equation.Equ
 	if len(symbols) == 0 {
 		return equation.NewDisjunctionSystem(disjunctions), nil
 	}
-	subgraphSymbol := symbols[len(symbols)-1]
+	var subgraphSymbol symbol.Symbol
+	for _, s := range symbols {
+		for _, h := range hasAlreadyBeen {
+			if s == h {
+				break
+			}
+		}
+		subgraphSymbol = s
+		hasAlreadyBeen = append(hasAlreadyBeen, s)
+		break
+	}
 	var newDisjunctions []equation.EquationsSystem
+	if !symbol.IsLetterOrVar(subgraphSymbol) {
+		return equation.NewDisjunctionSystem(newDisjunctions), nil
+	}
 	for i, graph := range newGraphs {
 		var es, newEs equation.EquationsSystem
-		es, err = s.simplify(&graph, subgraphSymbol)
+		es, err = s.simplify(&graph, subgraphSymbol, hasAlreadyBeen)
 		if err != nil {
 			return equation.EquationsSystem{}, fmt.Errorf("error simplifying children graph: %v", err)
 		}
@@ -349,7 +362,9 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 			return fmt.Errorf("error copying child graph: %v", err)
 		}
 		if newChildNode.HasTrueChildrenAndBackCycles() {
-			if !newChildNode.Substitution().IsEmpty() {
+			if !newChildNode.Substitution().IsEmpty() &&
+				// new rule
+				newChildNode.substitution.LeftPart() != currSymbol {
 				copyNode.AddSubstituteVar(newChildNode.substitution.LeftPart())
 			}
 			copyNode.children = append(copyNode.children, &newChildNode)
@@ -399,33 +414,58 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 		} else {
 			node.SetIsSubgraphRoot()
 
-			values, _, _, needsReduce := s.walkWithSymbolBackCycled(node)
-			fmt.Println(values)
-			var valuesLen = len(values)
+			//values, _, _, needsReduce := s.walkWithSymbolBackCycled(node)
+			//fmt.Println(values)
+			//var valuesLen = len(values)
+			//var es equation.EquationsSystem
+			//var eqType int = equation.EQ_TYPE_SIMPLE
+			//var valuesToEq = values[valuesLen-1]
+			//for _, v := range values {
+			//	v.ReduceEmptyVars()
+			//}
+			//if needsReduce && valuesLen > 1 {
+			//	if valuesLen != 2 {
+			//		return fmt.Errorf("values length must be 2")
+			//	}
+			//	if !standart.CheckSymbolArraysEquality(values[0][1], values[1][1]) {
+			//		return fmt.Errorf("can't create characteristic equation")
+			//	}
+			//	if len(values[0][0]) == 1 && symbol.IsEmpty(values[0][0][0]) {
+			//		eqType = equation.EQ_TYPE_W_EMPTY
+			//	} else if !standart.CheckSymbolArraysEquality(values[0][0], values[1][0]) {
+			//		return fmt.Errorf("can't create characteristic equation")
+			//	}
+			//}
+
+			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(node)
+			//fmt.Println(f1)
+			//fmt.Println(f2)
+
 			var es equation.EquationsSystem
 			var eqType int = equation.EQ_TYPE_SIMPLE
-			var valuesToEq = values[valuesLen-1]
-			for _, v := range values {
-				v.ReduceEmptyVars()
-			}
-			if needsReduce && valuesLen > 1 {
-				if valuesLen != 2 {
-					return fmt.Errorf("values length must be 2")
-				}
-				if !standart.CheckSymbolArraysEquality(values[0][1], values[1][1]) {
-					return fmt.Errorf("can't create characteristic equation")
-				}
-				if len(values[0][0]) == 1 && symbol.IsEmpty(values[0][0][0]) {
-					eqType = equation.EQ_TYPE_W_EMPTY
-				} else if !standart.CheckSymbolArraysEquality(values[0][0], values[1][0]) {
+
+			if f2.IsEmpty() {
+				eqType = equation.EQ_TYPE_SIMPLE
+			} else {
+				f1E, f2E := f1.Compare(f2)
+				if f2E {
+					if f1E {
+						eqType = equation.EQ_TYPE_SIMPLE
+					} else {
+						eqType = equation.EQ_TYPE_W_EMPTY
+					}
+				} else {
 					return fmt.Errorf("can't create characteristic equation")
 				}
 			}
-			es, err = equation.CharacteristicEquation(sVar, valuesToEq, eqType)
+
+			es, err = equation.CharacteristicEquationRefactored(sVar, f1, eqType)
+
 			if err != nil {
 				return fmt.Errorf("can't create characteristic equation: %v", err)
 
 			}
+			//es.Print()
 			node.SetSimplifiedRepresentation(es)
 			//node.simplified.Print()
 
@@ -561,4 +601,112 @@ func (s *Simplifier) walkWithSymbolBackCycled(node *Node) ([]equation.VariableVa
 		return values, nil, metEmptySubstNode, true
 	}
 	return values, nil, metEmptySubstNode, false
+}
+
+func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node) (equation.CharacteristicValues,
+	equation.CharacteristicValues, *Node, bool) {
+	if node.LeadsToBackCycle() {
+		// returning node to which it has back cycle to
+		if !node.Substitution().IsEmpty() {
+			return equation.NewCharacteristicValuesFromArrays([]symbol.Symbol{}, []symbol.Symbol{node.NewLetter()}),
+				equation.NewCharacteristicValues(), node.children[0], false
+		} else {
+			return equation.NewCharacteristicValues(), equation.NewCharacteristicValues(), node.children[0], false
+		}
+	}
+	if len(node.children) == 0 && node.infoChild != nil {
+		if !node.Substitution().IsEmpty() {
+			return equation.NewCharacteristicValuesFromArrays([]symbol.Symbol{node.NewLetter()}, []symbol.Symbol{}),
+				equation.NewCharacteristicValues(), nil, true
+		} else {
+			return equation.NewCharacteristicValues(), equation.NewCharacteristicValues(), nil, true
+		}
+	}
+	var cycleToNode *Node
+	var chValuesMainArray = equation.NewCharacteristicValuesArray()
+	var chValuesHelpArray = equation.NewCharacteristicValuesArray()
+	var metTrueNodeAll bool
+	for _, ch := range node.Children() {
+		if ch.HasOnlyFalseChildren() {
+			continue
+		}
+		chValuesMain, chValuesHelp, currParentNode, metTrueNode := s.walkWithSymbolBackCycledRefactored(ch)
+		//ch.Print()
+		//fmt.Println(chValuesMain)
+		//fmt.Println(chValuesHelp)
+		chValuesMainArray = append(chValuesMainArray, chValuesMain)
+		chValuesHelpArray = append(chValuesHelpArray, chValuesHelp)
+		if currParentNode != nil {
+			cycleToNode = currParentNode
+		}
+		if metTrueNode {
+			metTrueNodeAll = true
+		}
+	}
+	var newChvalues = equation.NewCharacteristicValues()
+	var newChvaluesHelp = equation.NewCharacteristicValues()
+	for _, v := range chValuesMainArray {
+		newChvalues.Append(v)
+	}
+	for _, v := range chValuesHelpArray {
+		newChvaluesHelp.Append(v)
+	}
+	var newLetter symbol.Symbol
+	if !node.substitution.IsEmpty() {
+		newLetter = node.NewLetter()
+	}
+	if cycleToNode == node {
+		if node.IsSubgraphRoot() {
+			return newChvalues, equation.NewCharacteristicValues(), nil, false
+		}
+		if !node.substitution.IsEmpty() {
+			return equation.NewCharacteristicValuesFromArrays([]symbol.Symbol{newLetter}, []symbol.Symbol{}),
+				newChvalues, nil, false
+		}
+		return equation.NewCharacteristicValuesFromArrays([]symbol.Symbol{}, []symbol.Symbol{}),
+			newChvalues, nil, false
+	} else {
+		if !node.HasTrueChildren() {
+			if !node.substitution.IsEmpty() {
+				newChvalues.AddToF2Head(newLetter)
+			}
+			return newChvalues, equation.NewCharacteristicValues(), cycleToNode, false
+		} else {
+			if newChvaluesHelp.IsEmpty() {
+				if !node.substitution.IsEmpty() {
+					if metTrueNodeAll {
+						newChvalues.AddToF1Head(newLetter)
+					} else {
+						newChvalues.AddToF2Head(newLetter)
+					}
+				}
+				return newChvalues, equation.NewCharacteristicValues(), cycleToNode, metTrueNodeAll
+			} else {
+				f1E, f2E := newChvaluesHelp.Compare(newChvalues)
+				if f1E && f2E {
+					if !node.substitution.IsEmpty() {
+						if metTrueNodeAll {
+							newChvalues.AddToF1Head(newLetter)
+						} else {
+							newChvalues.AddToF2Head(newLetter)
+						}
+					}
+					if node.IsSubgraphRoot() {
+						return newChvalues, equation.NewCharacteristicValues(), cycleToNode, false
+					} else {
+						return equation.NewCharacteristicValues(), newChvalues, cycleToNode, false
+					}
+				} else {
+					if !node.substitution.IsEmpty() {
+						if metTrueNodeAll {
+							newChvalues.AddToF1Head(newLetter)
+						} else {
+							newChvalues.AddToF2Head(newLetter)
+						}
+					}
+					return newChvalues, newChvaluesHelp, cycleToNode, metTrueNodeAll
+				}
+			}
+		}
+	}
 }

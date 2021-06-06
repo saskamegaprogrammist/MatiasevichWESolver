@@ -76,7 +76,7 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 			SplitByEquidecomposability: true,
 			CycleRange:                 10,
 			FullGraph:                  true,
-			FullSystem:                 false,
+			FullSystem:                 true,
 			AlgorithmMode:              solver.solveOptions.AlgorithmMode,
 			SaveLettersSubstitutions:   true,
 			NeedsSimplification:        false,
@@ -309,6 +309,7 @@ func (solver *Solver) solveEquationTimes(equation equation.Equation, times int) 
 	if err != nil {
 		return 0, fmt.Errorf("error solving equation: %v", err)
 	}
+	fmt.Println(tree.subgraphsSubstituteVars)
 	tree.SetWasUnfolded()
 	measuredTime := time.Since(timeStart)
 	//err = solver.simplifier.Simplify(&tree)
@@ -674,6 +675,10 @@ func (solver *Solver) solveSystem(node *Node) error {
 			}
 		}
 	}
+
+	node.Print()
+	fmt.Println(node.childrenSubstituteVars)
+	fmt.Println(node.subgraphsSubstituteVars)
 
 	return nil
 }

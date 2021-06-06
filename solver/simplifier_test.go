@@ -79,7 +79,7 @@ func TestSimplifier_Simplify_Second(t *testing.T) {
 		return
 	}
 	if !tree.simplified.Equals(secondTestResult) {
-		t.Errorf("TestSimplifier_Simplify_Second error: result must be: %v", secondTestResult.String())
+		t.Errorf("TestSimplifier_Simplify_Second error: result must be:\n %v\n, but is:\n %v \n", secondTestResult.String(), tree.simplified.String())
 	}
 }
 
