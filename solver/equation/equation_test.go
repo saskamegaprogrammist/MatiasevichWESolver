@@ -647,3 +647,28 @@ func TestEquation_CheckSimpleWord(t *testing.T) {
 		return
 	}
 }
+
+func TestEquation_IsRegularlyOrdered(t *testing.T) {
+	// A x T y = x y B A
+	eq := NewEquation([]symbol.Symbol{symbol.Const("A"),
+		symbol.Var("x"), symbol.LetterVar("T"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("x"),
+			symbol.Var("y"), symbol.Const("B"), symbol.Const("A")})
+
+	if !eq.IsRegularlyOrdered() {
+		t.Errorf("TestEquation_CheckSimpleWord failed: A x T y = x y B A is regularly ordered")
+		return
+	}
+
+	// C T y x A y = y D x A T y B
+	eq = NewEquation([]symbol.Symbol{symbol.LetterVar("C"),
+		symbol.LetterVar("T"), symbol.Var("y"), symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("y"), symbol.LetterVar("D"), symbol.Var("x"),
+			symbol.Const("A"), symbol.LetterVar("T"), symbol.Var("y"), symbol.Const("B")})
+
+	if !eq.IsRegularlyOrdered() {
+		t.Errorf("TestEquation_CheckSimpleWord C T y x A y = y D x A T y B is regularly ordered")
+		return
+	}
+}

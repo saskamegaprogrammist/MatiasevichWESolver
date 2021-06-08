@@ -779,13 +779,13 @@ func (equation *Equation) IsRegularlyOrdered() bool {
 	for {
 		for ; i < equation.LeftPart.Length; i++ {
 			symL = equation.LeftPart.Symbols[i]
-			if !symbol.IsConst(symL) && !symbol.IsEmpty(symL) {
+			if symbol.IsVar(symL) {
 				break
 			}
 		}
 		for ; j < equation.RightPart.Length; j++ {
 			symR = equation.RightPart.Symbols[j]
-			if !symbol.IsConst(symR) && !symbol.IsEmpty(symR) {
+			if symbol.IsVar(symR) {
 				break
 			}
 		}
@@ -805,13 +805,13 @@ func (equation *Equation) IsRegularlyOrdered() bool {
 	}
 	for ; i < equation.LeftPart.Length; i++ {
 		symL = equation.LeftPart.Symbols[i]
-		if symbol.IsLetterOrVar(symL) {
+		if symbol.IsVar(symL) {
 			return false
 		}
 	}
 	for ; j < equation.RightPart.Length; j++ {
 		symR = equation.RightPart.Symbols[j]
-		if symbol.IsLetterOrVar(symR) {
+		if symbol.IsVar(symR) {
 			return false
 		}
 	}
