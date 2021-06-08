@@ -420,7 +420,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error simplifying: %v", err)
 	}
-	tree.simplified.Print()
+	//tree.simplified.Print()
 	if !tree.HasTrueChildren() {
 		solver.createFalseNode(node, REGULAR_FALSE)
 		return true, nil

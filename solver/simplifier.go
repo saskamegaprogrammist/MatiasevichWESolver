@@ -272,7 +272,8 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
-		disj.Print()
+		//disj.Print()
+		//fmt.Println()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -306,7 +307,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 		if err != nil {
 			return equation.EquationsSystem{}, fmt.Errorf("error simplifying children graph: %v", err)
 		}
-		newEs = equation.NewConjunctionSystem([]equation.EquationsSystem{es, disjunctions[i]})
+		newEs = equation.NewConjunctionSystem([]equation.EquationsSystem{disjunctions[i], es})
 		newDisjunctions = append(newDisjunctions, newEs)
 	}
 	return equation.NewDisjunctionSystem(newDisjunctions), nil
@@ -414,7 +415,7 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 		} else {
 			node.SetIsSubgraphRoot()
 
-			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(node)
+			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(node, sVar)
 			//fmt.Println(f1)
 			//fmt.Println(f2)
 
@@ -483,7 +484,7 @@ func (s *Simplifier) walkWithSymbol(node *Node) equation.VariableValues {
 	return values
 }
 
-func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node) (equation.CharacteristicValues,
+func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.Symbol) (equation.CharacteristicValues,
 	equation.CharacteristicValues, *Node, bool) {
 	if node.LeadsToBackCycle() {
 		// returning node to which it has back cycle to
@@ -507,10 +508,13 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node) (equation.Ch
 	var chValuesHelpArray = equation.NewCharacteristicValuesArray()
 	var metTrueNodeAll bool
 	for _, ch := range node.Children() {
+		if !ch.substitution.IsEmpty() && ch.substitution.IsTo() != sVar.Value() {
+			continue
+		}
 		if ch.HasOnlyFalseChildren() {
 			continue
 		}
-		chValuesMain, chValuesHelp, currParentNode, metTrueNode := s.walkWithSymbolBackCycledRefactored(ch)
+		chValuesMain, chValuesHelp, currParentNode, metTrueNode := s.walkWithSymbolBackCycledRefactored(ch, sVar)
 		//ch.Print()
 		//fmt.Println(chValuesMain)
 		//fmt.Println(chValuesHelp)

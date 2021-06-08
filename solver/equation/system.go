@@ -195,6 +195,7 @@ func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbo
 	return newEs, vars
 }
 
+// TODO: map messes with equations order (important for splitted by equidecomposability)
 func (es *EquationsSystem) Reduce() {
 	if es.IsEmpty() || es.IsSingleEquation() {
 		return
