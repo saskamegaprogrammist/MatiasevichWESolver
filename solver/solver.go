@@ -309,7 +309,6 @@ func (solver *Solver) solveEquationTimes(equation equation.Equation, times int) 
 	if err != nil {
 		return 0, fmt.Errorf("error solving equation: %v", err)
 	}
-	fmt.Println(tree.subgraphsSubstituteVars)
 	tree.SetWasUnfolded()
 	measuredTime := time.Since(timeStart)
 	//err = solver.simplifier.Simplify(&tree)
@@ -421,6 +420,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error simplifying: %v", err)
 	}
+	tree.simplified.Print()
 	if !tree.HasTrueChildren() {
 		solver.createFalseNode(node, REGULAR_FALSE)
 		return true, nil
@@ -539,6 +539,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 		if !simplified {
 			firstEquation := node.value.Equation()
+			//firstEquation.Print()
 
 			if solver.algorithmType == FINITE {
 				if checkFirstRuleFinite(firstEquation) {
@@ -676,9 +677,9 @@ func (solver *Solver) solveSystem(node *Node) error {
 		}
 	}
 
-	node.Print()
-	fmt.Println(node.childrenSubstituteVars)
-	fmt.Println(node.subgraphsSubstituteVars)
+	//node.Print()
+	//fmt.Println(node.childrenSubstituteVars)
+	//fmt.Println(node.subgraphsSubstituteVars)
 
 	return nil
 }

@@ -648,6 +648,8 @@ func (equation *Equation) FullReduceEmpty() {
 				equationLeftPart = append(equationLeftPart, sym)
 			}
 		}
+		equation.LeftPart.Symbols = equationLeftPart
+		equation.LeftPart.Length = len(equationLeftPart)
 	}
 	if equation.RightPart.Length > 1 {
 		for _, sym := range equation.RightPart.Symbols {
@@ -655,11 +657,9 @@ func (equation *Equation) FullReduceEmpty() {
 				equationRightPart = append(equationRightPart, sym)
 			}
 		}
+		equation.RightPart.Symbols = equationRightPart
+		equation.RightPart.Length = len(equationRightPart)
 	}
-	equation.LeftPart.Symbols = equationLeftPart
-	equation.LeftPart.Length = len(equationLeftPart)
-	equation.RightPart.Symbols = equationRightPart
-	equation.RightPart.Length = len(equationRightPart)
 }
 
 func (equation *Equation) SplitByEquidecomposability() EqSystem {
