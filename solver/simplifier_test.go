@@ -57,7 +57,7 @@ var secondTestResult = equation.NewDisjunctionSystem([]equation.EquationsSystem{
 		[]symbol.Symbol{symbol.Var("y"), symbol.Const("A"), symbol.Const("B")}),
 })})
 
-// x y A B = A B x y
+// x y A B = A B x y => (A B y = y A B & A B x = x A B) V (B A y = y A B & A B x = x B A)
 
 func TestSimplifier_Simplify_Second(t *testing.T) {
 	var simplifier Simplifier

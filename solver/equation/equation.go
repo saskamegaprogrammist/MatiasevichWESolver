@@ -16,6 +16,10 @@ type Equation struct {
 
 const EQUALS = "="
 
+func (equation *Equation) Structure() *Structure {
+	return &equation.structure
+}
+
 func (equation *Equation) Letters() []symbol.Symbol {
 	var letters = make([]symbol.Symbol, 0)
 	for s := range equation.structure.letters {

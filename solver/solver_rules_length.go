@@ -15,30 +15,20 @@ func checkLengthRules(eq *equation.Equation) (bool, symbol.Symbol, int) {
 	var diffSymL, diffSymR symbol.Symbol
 	s1 := eq.LeftPart.Structure.LettersAndConstsLen()
 	s2 := eq.RightPart.Structure.LettersAndConstsLen()
-	var hasBeenMap = make(map[symbol.Symbol]bool)
 	var leftMap, rightMap map[symbol.Symbol]int
 	leftMap = eq.LeftPart.Structure.Vars()
 	rightMap = eq.RightPart.Structure.Vars()
-	var cont, res bool
-	for sym, numL := range leftMap {
+
+	for sym, _ := range eq.Structure().Vars() {
 		numR := rightMap[sym]
-		if numR != 0 {
-			hasBeenMap[sym] = true
-		}
-		cont, res = checkRules(sym, s1, s2, numL, numR, &diffL, &diffR, &diffSymL, &diffSymR, &diffVL, &diffVR)
-		if !cont {
-			return res, nil, 0
-		}
-	}
-	for sym, numR := range rightMap {
-		if hasBeenMap[sym] {
-			continue
-		}
 		numL := leftMap[sym]
-		cont, res = checkRules(sym, s1, s2, numL, numR, &diffL, &diffR, &diffSymL, &diffSymR, &diffVL, &diffVR)
-		if !cont {
-			return res, nil, 0
-		}
+		checkRules(sym, numL, numR, &diffL, &diffR, &diffSymL, &diffSymR, &diffVL, &diffVR)
+	}
+	if diffL > 0 && diffR == 0 && s1 > s2 {
+		return false, nil, 0
+	}
+	if diffR > 0 && diffL == 0 && s2 > s1 {
+		return false, nil, 0
 	}
 	if diffL == 1 && s2 >= s1 {
 		var newLetters = float64(s2-s1) / diffVL
@@ -60,27 +50,17 @@ func checkLengthRules(eq *equation.Equation) (bool, symbol.Symbol, int) {
 	return true, nil, 0
 }
 
-func checkRules(sym symbol.Symbol, s1, s2, numL, numR int, diffL, diffR *int, diffSymL, diffSymR *symbol.Symbol, diffVL, diffVR *float64) (bool, bool) {
-	// TODO: check this case
-	if s1 == s2 && (*diffL > 1 || *diffR > 1) {
-		return false, true
-	}
+func checkRules(sym symbol.Symbol, numL, numR int, diffL, diffR *int, diffSymL, diffSymR *symbol.Symbol, diffVL, diffVR *float64) {
 	if numL > numR {
 		*diffVL = float64(numL - numR)
 		*diffL++
 		*diffSymL = sym
-		if s1 > s2 {
-			return false, false
-		}
+
 	} else if numL < numR {
 		*diffVR = float64(numR - numL)
 		*diffR++
 		*diffSymR = sym
-		if s2 > s1 {
-			return false, false
-		}
 	}
-	return true, true
 }
 
 func analiseMultiplicity(eq *equation.Equation) bool {

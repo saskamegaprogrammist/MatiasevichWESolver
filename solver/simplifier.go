@@ -316,6 +316,22 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.EquationsSystem, currSymbol symbol.Symbol) error {
 	var err error
 	copyNode.Copy(node)
+	// TODO: FIX!!!
+	//if node.HasSingleSubstituteVar() {
+	//	var sym symbol.Symbol
+	//	sym, err = node.SubstituteVar()
+	//	if err != nil {
+	//		return fmt.Errorf("error getting substitute var: %v", err)
+	//	}
+	//	if sym != nil && sym.Value() == currSymbol.Value() && !node.simplified.HasEqSystem(disjunctionComponent) {
+	//		copyNode.SetHasFalseChildren()
+	//		falseNode := &FalseNode{
+	//			number: "F_" + copyNode.number,
+	//		}
+	//		copyNode.infoChild = falseNode
+	//	}
+	//	return nil
+	//}
 	if node.simplified.HasEqSystem(disjunctionComponent) {
 		copyNode.SetHasTrueChildren()
 		trueNode := &TrueNode{
@@ -352,7 +368,7 @@ func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.Equatio
 			if err != nil {
 				return fmt.Errorf("error getting substitute var: %v", err)
 			}
-			if sym.Value() == currSymbol.Value() && !ch.simplified.HasEqSystem(disjunctionComponent) {
+			if sym != nil && sym.Value() == currSymbol.Value() && !ch.simplified.HasEqSystem(disjunctionComponent) {
 				continue
 			}
 		}
