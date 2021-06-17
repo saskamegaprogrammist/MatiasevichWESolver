@@ -71,7 +71,7 @@ func (solver *Solver) InitWithSystem(constantsAlph string, varsAlph string, equa
 		if err != nil {
 			return fmt.Errorf("error parsing equation: %v", err)
 		}
-		eq.Print()
+		//eq.Print()
 		equationsParsed = append(equationsParsed, eq)
 	}
 	eqSystem := equation.NewConjunctionSystemFromEquations(equationsParsed)
@@ -583,6 +583,23 @@ func (solver *Solver) solveSystem(node *Node) error {
 			child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 				"z"+node.number, node, newEs)
 			node.SetChildren([]*Node{&child})
+		} else {
+			node.value = newEs
+		}
+	}
+
+	// applying
+
+	if solver.solveOptions.ApplyEquations {
+		nodeValue = node.value
+		applied, err := nodeValue.Apply()
+		if err != nil {
+			return fmt.Errorf("error during applying system: %v", err)
+		}
+		if applied {
+			child := NewNodeWEquationsSystem(equation.NewSubstituionApply(), "i"+node.number, node, nodeValue)
+			node.SetChildren([]*Node{&child})
+			node = &child
 		}
 	}
 

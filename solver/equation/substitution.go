@@ -87,3 +87,9 @@ func NewSubstitutionReduce() Substitution {
 		sType: REDUCING,
 	}
 }
+
+func NewSubstituionApply() Substitution {
+	return Substitution{
+		sType: APPLYING,
+	}
+}

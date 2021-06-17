@@ -9,6 +9,7 @@ type SolveOptions struct {
 	AlgorithmMode              string
 	SaveLettersSubstitutions   bool
 	NeedsSimplification        bool
+	ApplyEquations             bool
 }
 
 type PrintOptions struct {

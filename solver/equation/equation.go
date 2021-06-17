@@ -656,28 +656,233 @@ func (equation *Equation) Reduce() bool {
 	return reduced
 }
 
-//func (equation *Equation) Reduce() {
-//	equation.FullReduceEmpty()
-//	minLen := standart.Min(equation.LeftPart.Length, equation.RightPart.Length)
-//	i := 0
-//	for ; i < minLen; i++ {
-//		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[i] {
-//			break
-//		}
-//		s := equation.LeftPart.Symbols[i]
-//		equation.LeftPart.Structure.Sub(s)
-//		equation.RightPart.Structure.Sub(s)
-//		equation.structure.SubTimes(s, 2)
-//
-//	}
-//	if i > 0 {
-//		equation.RightPart.Symbols = equation.RightPart.Symbols[i:]
-//		equation.RightPart.Length -= i
-//		equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
-//		equation.LeftPart.Length -= i
-//	}
-//	equation.reduceEmptyFromBeginning()
-//}
+func (equation *Equation) Apply(e Equation) (bool, Equation, error) {
+	if !e.isEquidecomposable {
+		return false, Equation{}, fmt.Errorf("applied equation %s is not equidecomposable", e.String())
+	}
+	var newEq Equation
+	appliedFirstForward, newEq := equation.applyFirstRuleForward(e)
+	if !appliedFirstForward {
+		appliedFirstBackwards, newEq := equation.applyFirstRuleBackwards(e)
+		return appliedFirstBackwards, newEq, nil
+	} else {
+		return appliedFirstForward, newEq, nil
+	}
+}
+
+func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
+	i := 0
+	j := 0
+	for i < equation.LeftPart.Length && i < e.LeftPart.Length {
+		if equation.LeftPart.Symbols[i] == e.LeftPart.Symbols[i] {
+			i++
+		} else {
+			break
+		}
+	}
+	if i != 0 {
+		for j < equation.RightPart.Length && j < e.RightPart.Length {
+			if equation.RightPart.Symbols[j] == e.RightPart.Symbols[j] {
+				j++
+			} else {
+				break
+			}
+		}
+		if j == 0 {
+			return false, *equation
+		} else {
+			if i > j {
+				if i != e.LeftPart.Length {
+					return false, *equation
+				}
+				var leftSymbolsFirst = make([]symbol.Symbol, len(e.RightPart.Symbols))
+				copy(leftSymbolsFirst, e.RightPart.Symbols)
+				var leftSymbolsSecond = make([]symbol.Symbol, len(equation.LeftPart.Symbols[i:]))
+				copy(leftSymbolsSecond, equation.LeftPart.Symbols[i:])
+
+				var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
+				copy(rightSymbols, equation.RightPart.Symbols)
+				newEq := NewEquation(append(leftSymbolsFirst, leftSymbolsSecond...), rightSymbols)
+				newEq.Reduce()
+				return false, newEq
+			} else {
+				if j != e.RightPart.Length {
+					return false, *equation
+				}
+
+				var rightSymbolsFirst = make([]symbol.Symbol, len(e.LeftPart.Symbols))
+				copy(rightSymbolsFirst, e.LeftPart.Symbols)
+				var rightSymbolsSecond = make([]symbol.Symbol, len(equation.RightPart.Symbols[j:]))
+				copy(rightSymbolsSecond, equation.RightPart.Symbols[j:])
+
+				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
+				copy(leftSymbols, equation.LeftPart.Symbols)
+				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, rightSymbolsSecond...))
+				newEq.Reduce()
+				return false, newEq
+			}
+		}
+	}
+
+	for i < equation.LeftPart.Length && i < e.RightPart.Length {
+		if equation.LeftPart.Symbols[i] == e.RightPart.Symbols[i] {
+			i++
+		} else {
+			break
+		}
+	}
+
+	if i != 0 {
+		for j < equation.RightPart.Length && j < e.LeftPart.Length {
+			if equation.RightPart.Symbols[j] == e.LeftPart.Symbols[j] {
+				j++
+			} else {
+				break
+			}
+		}
+		if j == 0 {
+			return false, *equation
+		} else {
+			if i > j {
+				if i != e.RightPart.Length {
+					return false, *equation
+				}
+				var leftSymbolsFirst = make([]symbol.Symbol, len(e.LeftPart.Symbols))
+				copy(leftSymbolsFirst, e.LeftPart.Symbols)
+				var leftSymbolsSecond = make([]symbol.Symbol, len(equation.LeftPart.Symbols[i:]))
+				copy(leftSymbolsSecond, equation.LeftPart.Symbols[i:])
+
+				var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
+				copy(rightSymbols, equation.RightPart.Symbols)
+				newEq := NewEquation(append(leftSymbolsFirst, leftSymbolsSecond...), rightSymbols)
+				newEq.Reduce()
+				return true, newEq
+			} else {
+				if j != e.LeftPart.Length {
+					return false, *equation
+				}
+				var rightSymbolsFirst = make([]symbol.Symbol, len(e.RightPart.Symbols))
+				copy(rightSymbolsFirst, e.RightPart.Symbols)
+				var rightSymbolsSecond = make([]symbol.Symbol, len(equation.RightPart.Symbols[j:]))
+				copy(rightSymbolsSecond, equation.RightPart.Symbols[j:])
+
+				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
+				copy(leftSymbols, equation.LeftPart.Symbols)
+				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, rightSymbolsSecond...))
+				newEq.Reduce()
+				return true, newEq
+			}
+		}
+	}
+	return false, *equation
+}
+
+func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
+	i := 0
+	j := 0
+	for i < equation.LeftPart.Length && i < e.LeftPart.Length {
+		if equation.LeftPart.Symbols[equation.LeftPart.Length-1-i] == e.LeftPart.Symbols[e.LeftPart.Length-1-i] {
+			i++
+		} else {
+			break
+		}
+	}
+	if i != 0 {
+		for j < equation.RightPart.Length && j < e.RightPart.Length {
+			if equation.RightPart.Symbols[equation.RightPart.Length-1-j] == e.RightPart.Symbols[e.RightPart.Length-1-j] {
+				j++
+			} else {
+				break
+			}
+		}
+		if j == 0 {
+			return false, *equation
+		} else {
+			if i > j {
+				if i != e.LeftPart.Length {
+					return false, *equation
+				}
+				var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i]))
+				copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i])
+				var leftSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
+				copy(leftSymbolsSecond, e.RightPart.Symbols)
+
+				var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
+				copy(rightSymbols, equation.RightPart.Symbols)
+				newEq := NewEquation(append(leftSymbolsFirst, leftSymbolsSecond...), rightSymbols)
+				newEq.Reduce()
+				return false, newEq
+			} else {
+				if j != e.RightPart.Length {
+					return false, *equation
+				}
+
+				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j]))
+				copy(rightSymbolsFirst, equation.RightPart.Symbols[:equation.RightPart.Length-j])
+				var rightSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
+				copy(rightSymbolsSecond, e.LeftPart.Symbols)
+
+				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
+				copy(leftSymbols, equation.LeftPart.Symbols)
+				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, rightSymbolsSecond...))
+				newEq.Reduce()
+				return false, newEq
+			}
+		}
+	}
+
+	for i < equation.LeftPart.Length && i < e.RightPart.Length {
+		if equation.LeftPart.Symbols[equation.LeftPart.Length-1-i] == e.RightPart.Symbols[e.RightPart.Length-1-i] {
+			i++
+		} else {
+			break
+		}
+	}
+
+	if i != 0 {
+		for j < equation.RightPart.Length && j < e.LeftPart.Length {
+			if equation.RightPart.Symbols[equation.RightPart.Length-1-j] == e.LeftPart.Symbols[e.LeftPart.Length-1-j] {
+				j++
+			} else {
+				break
+			}
+		}
+		if j == 0 {
+			return false, *equation
+		} else {
+			if i > j {
+				if i != e.RightPart.Length {
+					return false, *equation
+				}
+				var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i]))
+				copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i])
+				var leftSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
+				copy(leftSymbolsSecond, e.LeftPart.Symbols)
+				var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
+				copy(rightSymbols, equation.RightPart.Symbols)
+				newEq := NewEquation(append(leftSymbolsFirst, leftSymbolsSecond...), rightSymbols)
+				newEq.Reduce()
+				return true, newEq
+			} else {
+				if j != e.LeftPart.Length {
+					return false, *equation
+				}
+
+				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j]))
+				copy(rightSymbolsFirst, equation.RightPart.Symbols[:equation.RightPart.Length-j])
+				var rightSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
+				copy(rightSymbolsSecond, e.RightPart.Symbols)
+
+				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
+				copy(leftSymbols, equation.LeftPart.Symbols)
+				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, rightSymbolsSecond...))
+				newEq.Reduce()
+				return true, newEq
+			}
+		}
+	}
+	return false, *equation
+}
 
 func (equation *Equation) FullReduceEmpty() {
 	var equationLeftPart = make([]symbol.Symbol, 0)
@@ -758,6 +963,15 @@ func createSystem(firstPart []symbol.Symbol, secondPart []symbol.Symbol, firstPa
 	resultSystem.Equations = append(endSystem.Equations, resultSystem.Equations...)
 	resultSystem.Size += endSystem.Size
 	return resultSystem
+}
+
+func (equation *Equation) CheckEquidecomposability() bool {
+	if equation.isEquidecomposable {
+		return true
+	} else {
+		equation.isEquidecomposable, _ = checkEquidecomposability(equation.LeftPart.Symbols, equation.RightPart.Symbols)
+	}
+	return equation.isEquidecomposable
 }
 
 func checkEquidecomposability(firstPart []symbol.Symbol, secondPart []symbol.Symbol) (bool, bool) {

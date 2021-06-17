@@ -209,6 +209,94 @@ func (es *EquationsSystem) Reduce() bool {
 	return reduced
 }
 
+func (es *EquationsSystem) Apply() (bool, error) {
+	if es.IsEmpty() {
+		return false, nil
+	}
+	if es.IsSingleEquation() {
+		return false, nil
+	}
+	var applied bool
+	var err error
+	var app bool
+	if es.IsConjunction() {
+		var notEqs []EquationsSystem
+		var equidecomposable []Equation
+		var notEquidecomposable []Equation
+		for _, c := range es.compounds {
+			if !c.IsSingleEquation() {
+				notEqs = append(notEqs, c)
+			} else {
+				eq := c.Equation()
+				if eq.CheckEquidecomposability() {
+					equidecomposable = append(equidecomposable, *eq)
+				} else {
+					notEquidecomposable = append(notEquidecomposable, *eq)
+				}
+			}
+		}
+
+		var newEq Equation
+
+		var alreadyApplied = make(map[int]bool, 0)
+
+		for i, c := range equidecomposable {
+			for j := 0; j < len(notEquidecomposable); j++ {
+				app, newEq, err = notEquidecomposable[j].Apply(c)
+				if err != nil {
+					return applied, fmt.Errorf("error applying: %v", err)
+				}
+				applied = applied || app
+				if app {
+					notEquidecomposable[j] = newEq
+				}
+			}
+			for j := 0; j < len(equidecomposable); j++ {
+				if i == j || alreadyApplied[i] || alreadyApplied[j] {
+					continue
+				}
+				app, newEq, err = equidecomposable[j].Apply(c)
+				if err != nil {
+					return applied, fmt.Errorf("error applying: %v", err)
+				}
+				applied = applied || app
+				if app {
+					equidecomposable[j] = newEq
+					alreadyApplied[j] = true
+				}
+			}
+		}
+
+		for _, c := range notEqs {
+			app, err = c.Apply()
+			if err != nil {
+				return applied, fmt.Errorf("error applying: %v", err)
+			}
+			applied = applied || app
+		}
+		if len(notEqs) != 0 {
+			newConj := NewConjunctionSystemFromEquations(append(notEquidecomposable, equidecomposable...))
+			*es = NewConjunctionSystem(append(notEqs, newConj))
+
+		} else {
+			*es = NewConjunctionSystemFromEquations(append(notEquidecomposable, equidecomposable...))
+		}
+
+	}
+	if es.IsDisjunction() {
+		for _, c := range es.compounds {
+			app, err = c.Apply()
+			if err != nil {
+				return applied, fmt.Errorf("error applying: %v", err)
+			}
+			applied = applied || app
+		}
+	}
+	es.RemoveEqual()
+	es.Simplify()
+	return applied, nil
+}
+
 func (es *EquationsSystem) RemoveEqual() {
 	if es.IsEmpty() || es.IsSingleEquation() {
 		return

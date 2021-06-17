@@ -13,6 +13,9 @@ Matiasevich word equations solver
 - use_simplification - 
 *boolean* use simplification for regularly ordered equations
 
+- use_applying -
+*boolean* use applying equations to one another
+
 - solve_system - 
 *boolean* solve equations system
 

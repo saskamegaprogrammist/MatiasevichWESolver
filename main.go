@@ -25,7 +25,7 @@ func scanInput(scanner *bufio.Scanner) error {
 	return handleScannerError(scanner)
 }
 
-func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bool, bool, bool, bool) {
+func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bool, bool, bool, bool, bool) {
 	fullGraph := flag.Bool("full_graph", false, "print full graph")
 	fullSystem := flag.Bool("full_system", false, "solve full system")
 	inputFile := flag.String("input_file", "", "input filename")
@@ -36,19 +36,20 @@ func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bo
 	outputDir := flag.String("output_directory", ".", "output directory")
 	splitByEquidecomposability := flag.Bool("use_eq_split", false, "split equation into system")
 	lengthAnalysis := flag.Bool("use_length_analysis", false, "use length analysis")
-	simplification := flag.Bool("use_simplification", false, "use length analysis")
+	simplification := flag.Bool("use_simplification", false, "use simplification")
+	applying := flag.Bool("use_applying", false, "use applying")
 	defaultName := flag.Bool("default_name", false, "use default filename")
 	solveSystem := flag.Bool("solve_system", false, "solve equations system")
 
 	flag.Parse()
 	return *fullGraph, *inputFile, *inputDir, *cycleRange, *makePng,
 		*outputDir, *makeDot, *splitByEquidecomposability, *fullSystem,
-		*lengthAnalysis, *simplification, *defaultName, *solveSystem
+		*lengthAnalysis, *simplification, *defaultName, *solveSystem, *applying
 }
 
 func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 	cycleRange int, outputDir string, splitByEq bool, fullSystem bool,
-	lengthAnalysis bool, simplification bool, defaultName bool, solveSystem bool) {
+	lengthAnalysis bool, simplification bool, defaultName bool, solveSystem bool, applying bool) {
 	var err error
 	var equations = make([]string, 0)
 	var equation string
@@ -81,6 +82,7 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 		AlgorithmMode:              algorithmType,
 		FullSystem:                 fullSystem,
 		NeedsSimplification:        simplification,
+		ApplyEquations:             applying,
 	}
 	printOptions := solver.PrintOptions{
 		Dot:            makeDot,
@@ -125,7 +127,7 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 func main() {
 	matlog.LoggerSetup()
 	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, makeDot,
-		splitByEquidecomposability, fullSystem, lengthAnalysis, simplification, defaultName, solveSystem := parseFLags()
+		splitByEquidecomposability, fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying := parseFLags()
 
 	if inputDirName != "" {
 		inputDir, err := os.Open(inputDirName)
@@ -148,7 +150,7 @@ func main() {
 			}
 			process(inputFile, fullGraph, makePng, makeDot,
 				cycleRange, outputDir, splitByEquidecomposability,
-				fullSystem, lengthAnalysis, simplification, defaultName, solveSystem)
+				fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 		}
 	} else if inputFilename != "" {
 		inputFile, err := os.Open(inputFilename)
@@ -157,10 +159,10 @@ func main() {
 		}
 		process(inputFile, fullGraph, makePng, makeDot,
 			cycleRange, outputDir, splitByEquidecomposability,
-			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem)
+			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 	} else {
 		process(os.Stdin, fullGraph, makePng, makeDot,
 			cycleRange, outputDir, splitByEquidecomposability,
-			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem)
+			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 	}
 }
