@@ -9,11 +9,10 @@ import (
 )
 
 const (
-	FILENAME      = "eq_graph_"
-	GraphEXT      = ".dot"
-	PicEXT        = ".png"
-	PathSEPARATOR = "/"
-	DOT           = "."
+	FILENAME = "eq_graph_"
+	GraphEXT = ".dot"
+	PicEXT   = ".png"
+	DOT      = "."
 )
 
 var number = 0
@@ -37,11 +36,11 @@ func (writer *Writer) createFileName(name string, defaultFilename bool) {
 	} else {
 		newName = FILENAME + name
 	}
-	writer.filename = writer.outputDir + PathSEPARATOR + newName
+	writer.filename = writer.outputDir + string(os.PathSeparator) + newName
 }
 
 func (writer *Writer) parseName(defaultName string) string {
-	splitted := strings.Split(defaultName, PathSEPARATOR)
+	splitted := strings.Split(defaultName, string(os.PathSeparator))
 	newSplitted := strings.Split(splitted[len(splitted)-1], DOT)
 	return newSplitted[0]
 }

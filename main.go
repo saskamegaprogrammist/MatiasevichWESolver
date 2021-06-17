@@ -139,9 +139,10 @@ func main() {
 		}
 
 		sort.Slice(files, func(i, j int) bool { return files[i].Name() < files[j].Name() }) //sorting files by name
-
+		var fullPath string
 		for _, file := range files {
-			inputFile, err := os.Open(fmt.Sprintf("%s%c%s", inputDirName, os.PathSeparator, file.Name()))
+			fullPath = inputDirName + string(os.PathSeparator) + file.Name()
+			inputFile, err := os.Open(fullPath)
 			if err != nil {
 				logger.Errorf("error opening input file: %v", err)
 			}
