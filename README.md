@@ -13,6 +13,12 @@ Matiasevich word equations solver
 - use_simplification - 
 *boolean* use simplification for regularly ordered equations
 
+- solve_system - 
+*boolean* solve equations system
+
+- default_name - 
+*boolean* use input file name for output dot and png files
+
 - full_graph - 
 *boolean* create full graph description
 
@@ -48,16 +54,25 @@ Matiasevich word equations solver
 `go test `
 
 
-### Input format:
+### Input format (one equation):
 
 - Finite | Standard - *algorithm type*
 - {} | {const(, const)*}  - *constants alphabet*
 - {} | {var(, var)*} - *variables alphabet*
-- u a v = v a u - *equation*
+- A B x = y x B - *equation*
+
+### Input format (equations system):
+
+- Finite | Standard - *algorithm type*
+- {} | {const(, const)*}  - *constants alphabet*
+- {} | {var(, var)*} - *variables alphabet*
+- A B x = y x B - *equations system*
+
+  x x A = B x A A
 
 ### Output format:
 
-- l g l = A A Y - *equation*
+- A B x = y x B - *equation*
 - Standard - *algorithm type*
 - took time: 307.88µs - *time took algorithm to run excluding dot and png creation*
 - got solution: TRUE - *answer, whether algorithm has solutions or not*
