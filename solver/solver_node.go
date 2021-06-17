@@ -234,7 +234,18 @@ func (node *Node) SubstituteVar() (symbol.Symbol, error) {
 	if !node.HasSingleSubstituteVar() {
 		return nil, fmt.Errorf("node has several substitute vars")
 	}
-	return node.children[0].substitution.LeftPart(), nil
+	if len(node.children) == 0 {
+		return nil, fmt.Errorf("node has no children")
+	}
+	tr := node.children[0]
+	for tr != nil {
+		if tr.substitution.LeftPart() == nil {
+			tr = tr.children[0]
+		} else {
+			break
+		}
+	}
+	return tr.substitution.LeftPart(), nil
 }
 
 // copying node

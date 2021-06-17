@@ -272,8 +272,8 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
-		//disj.Print()
-		//fmt.Println()
+		disj.Print()
+		fmt.Println()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -316,22 +316,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 func copyGraph(node *Node, copyNode *Node, disjunctionComponent equation.EquationsSystem, currSymbol symbol.Symbol) error {
 	var err error
 	copyNode.Copy(node)
-	// TODO: FIX!!!
-	//if node.HasSingleSubstituteVar() {
-	//	var sym symbol.Symbol
-	//	sym, err = node.SubstituteVar()
-	//	if err != nil {
-	//		return fmt.Errorf("error getting substitute var: %v", err)
-	//	}
-	//	if sym != nil && sym.Value() == currSymbol.Value() && !node.simplified.HasEqSystem(disjunctionComponent) {
-	//		copyNode.SetHasFalseChildren()
-	//		falseNode := &FalseNode{
-	//			number: "F_" + copyNode.number,
-	//		}
-	//		copyNode.infoChild = falseNode
-	//	}
-	//	return nil
-	//}
+	// TODO: возможно надо создавать узел False явно
 	if node.simplified.HasEqSystem(disjunctionComponent) {
 		copyNode.SetHasTrueChildren()
 		trueNode := &TrueNode{
@@ -418,8 +403,15 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 		if sVar != subgraphSymbol {
 			return nil
 		}
-		if !node.HasBackCycle() {
-			values := s.walkWithSymbol(node)
+		//node.Print()
+
+		nodeToWalk := node
+		for len(nodeToWalk.children) == 1 && nodeToWalk.children[0].substitution.IsEmpty() {
+			nodeToWalk = node.children[0]
+		}
+
+		if !nodeToWalk.HasBackCycle() {
+			values := s.walkWithSymbol(nodeToWalk)
 			values.ReduceEmptyVars()
 
 			es := equation.SystemFromValues(sVar, values)
@@ -429,11 +421,12 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			*eqSystems = append(*eqSystems, es)
 			return nil
 		} else {
-			node.SetIsSubgraphRoot()
 
-			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(node, sVar)
-			//fmt.Println(f1)
-			//fmt.Println(f2)
+			nodeToWalk.SetIsSubgraphRoot()
+
+			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(nodeToWalk, sVar)
+			fmt.Println(f1)
+			fmt.Println(f2)
 
 			var es equation.EquationsSystem
 			var eqType int = equation.EQ_TYPE_SIMPLE
@@ -463,7 +456,7 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			node.SetSimplifiedRepresentation(es)
 			//node.simplified.Print()
 
-			node.UnsetIsSubgraphRoot()
+			nodeToWalk.UnsetIsSubgraphRoot()
 			*eqSystems = append(*eqSystems, es)
 			return nil
 		}
