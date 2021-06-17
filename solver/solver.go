@@ -17,30 +17,73 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyz"
 
 const MAGIC_PREFIX = "MAGIC"
 const EMPTY = ""
+const LOWDASH = "_"
 
 type Solver struct {
 	algorithmType int64
 	constantsAlph equation.Alphabet
 	varsAlph      equation.Alphabet
 	wordsAlph     equation.Alphabet
-	equation      equation.Equation
-	hasSolution   bool
-	cycled        bool
-	dotWriter     DotWriter
-	printOptions  PrintOptions
-	solveOptions  SolveOptions
-	simplifier    Simplifier
+	//equation      equation.Equation
+	equationsSystem equation.EquationsSystem
+	hasSolution     bool
+	cycled          bool
+	dotWriter       DotWriter
+	printOptions    PrintOptions
+	solveOptions    SolveOptions
+	simplifier      Simplifier
 }
 
 func (solver *Solver) InitWoEquation(constantsAlph string, varsAlph string,
 	printOptions PrintOptions,
 	solveOptions SolveOptions) error {
-	return solver.Init(constantsAlph, varsAlph, EMPTY, printOptions, solveOptions)
+	return solver.init(constantsAlph, varsAlph, printOptions, solveOptions)
 }
 
 func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
-	printOptions PrintOptions,
-	solveOptions SolveOptions) error {
+	printOptions PrintOptions, solveOptions SolveOptions) error {
+	var err error
+	err = solver.init(constantsAlph, varsAlph, printOptions, solveOptions)
+	if err != nil {
+		return err
+	}
+	err = solver.SetEquationString(eq)
+	if err != nil {
+		return err
+	}
+	solver.equationsSystem.Print()
+	fmt.Println(solveOptions.AlgorithmMode)
+	return nil
+}
+
+func (solver *Solver) InitWithSystem(constantsAlph string, varsAlph string, equations []string,
+	printOptions PrintOptions, solveOptions SolveOptions) error {
+	var err error
+	err = solver.init(constantsAlph, varsAlph, printOptions, solveOptions)
+	if err != nil {
+		return err
+	}
+	var equationsParsed []equation.Equation
+	for _, eqString := range equations {
+		fmt.Println(eqString)
+		var eq equation.Equation
+		err = eq.Init(eqString, &solver.constantsAlph, &solver.varsAlph)
+		if err != nil {
+			return fmt.Errorf("error parsing equation: %v", err)
+		}
+		eq.Print()
+		equationsParsed = append(equationsParsed, eq)
+	}
+	eqSystem := equation.NewConjunctionSystemFromEquations(equationsParsed)
+	solver.equationsSystem = eqSystem
+
+	fmt.Println(solveOptions.AlgorithmMode)
+
+	return nil
+}
+
+func (solver *Solver) init(constantsAlph string, varsAlph string,
+	printOptions PrintOptions, solveOptions SolveOptions) error {
 	var err error
 	intType, err := matchAlgorithmType(solveOptions.AlgorithmMode)
 	if err != nil {
@@ -57,15 +100,6 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 		return fmt.Errorf("error parsing vars: %v", err)
 	}
 	solver.varsAlph = varsAlphabet
-	if eq != EMPTY {
-		err = solver.equation.Init(eq, &constAlphabet, &varsAlphabet)
-		if err != nil {
-			return fmt.Errorf("error parsing equation: %v", err)
-		}
-
-		solver.equation.Print()
-		fmt.Println(solveOptions.AlgorithmMode)
-	}
 
 	solver.printOptions = printOptions
 	solver.solveOptions = solveOptions
@@ -107,12 +141,14 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 	return nil
 }
 
-func (solver *Solver) SetEquationString(eq string) error {
+func (solver *Solver) SetEquationString(eqString string) error {
 	var err error
-	err = solver.equation.Init(eq, &solver.constantsAlph, &solver.varsAlph)
+	var eq equation.Equation
+	err = eq.Init(eqString, &solver.constantsAlph, &solver.varsAlph)
 	if err != nil {
 		return fmt.Errorf("error parsing equation: %v", err)
 	}
+	solver.equationsSystem = equation.NewSingleEquation(eq)
 	return nil
 }
 
@@ -120,7 +156,7 @@ func (solver *Solver) SetEquation(eq equation.Equation) error {
 	if err := eq.Check(&solver.constantsAlph, &solver.varsAlph, &solver.wordsAlph); err != nil {
 		return fmt.Errorf("equation doesn't belong: %v", err)
 	}
-	solver.equation = eq
+	solver.equationsSystem = equation.NewSingleEquation(eq)
 	return nil
 }
 
@@ -215,13 +251,13 @@ func (solver *Solver) getLetter() symbol.Letter {
 }
 
 func (solver *Solver) Solve() (string, time.Duration, error) {
-	if solver.equation.IsEmpty() {
+	if solver.equationsSystem.IsEmpty() {
 		return "", 0, fmt.Errorf("no equation was set")
 	}
 	var duration time.Duration
 	var err error
 	if solver.printOptions.Dot {
-		err := solver.setWriter(solver.equation)
+		err := solver.setWriter(solver.equationsSystem)
 		if err != nil {
 			return "", duration, fmt.Errorf("error setting writer: %v", err)
 		}
@@ -241,10 +277,11 @@ func (solver *Solver) Solve() (string, time.Duration, error) {
 		}()
 	}
 	if solver.solveOptions.SplitByEquidecomposability {
-		if solver.equation.IsQuadratic() {
+		if solver.equationsSystem.IsSingleEquation() && solver.equationsSystem.Equation().IsQuadratic() {
+			eq := solver.equationsSystem.Equation()
 			var hasSolution = true
 			var hasCycled bool
-			system := solver.equation.SplitByEquidecomposability()
+			system := eq.SplitByEquidecomposability()
 			var sumTime time.Duration
 			for i, eq := range system.Equations {
 				duration, err = solver.solveEquationTimes(eq, i)
@@ -267,7 +304,7 @@ func (solver *Solver) Solve() (string, time.Duration, error) {
 			solver.hasSolution = hasSolution
 			return solver.getAnswer(), sumTime, err
 		} else {
-			duration, err = solver.solveEquation(solver.equation)
+			duration, err = solver.solveEquationsSystem(solver.equationsSystem)
 			if err != nil {
 				return "", duration, fmt.Errorf("error solving regularly ordered equation as system : %v", err)
 			}
@@ -275,7 +312,7 @@ func (solver *Solver) Solve() (string, time.Duration, error) {
 			return result, duration, nil
 		}
 	} else {
-		duration, err = solver.solveEquation(solver.equation)
+		duration, err = solver.solveEquationsSystem(solver.equationsSystem)
 		if err != nil {
 			return "", duration, fmt.Errorf("error solving equation: %v", err)
 		}
@@ -289,8 +326,14 @@ func (solver *Solver) clear() {
 	solver.hasSolution = false
 }
 
-func (solver *Solver) setWriter(equation equation.Equation) error {
-	err := solver.dotWriter.Init(solver.solveOptions.AlgorithmMode, equation.String(), solver.printOptions.OutputDir)
+func (solver *Solver) setWriter(equationsSystem equation.EquationsSystem) error {
+	var outName string
+	if solver.printOptions.UseDefaultName && solver.printOptions.InputFilename != "" {
+		outName = solver.printOptions.InputFilename
+	} else {
+		outName = solver.solveOptions.AlgorithmMode + LOWDASH + equationsSystem.String()
+	}
+	err := solver.dotWriter.Init(outName, solver.printOptions.UseDefaultName, solver.printOptions.OutputDir)
 	if err != nil {
 		return fmt.Errorf("error initing writer: %v", err)
 	}
@@ -426,7 +469,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		return true, nil
 	}
 	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
-		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{tree.simplified, simple})
+		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{simple, tree.simplified})
 		newEs.Simplify()
 		child := NewNodeWEquationsSystem(equation.Substitution{},
 			"s"+node.number, node, newEs)
@@ -434,7 +477,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	} else if tree.simplified.IsDisjunction() {
 		var newChildNodes = make([]*Node, 0)
 		for i, c := range tree.simplified.Compounds() {
-			newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{c, simple})
+			newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{simple, c})
 			newEs.Simplify()
 			child := NewNodeWEquationsSystem(equation.Substitution{},
 				"s"+node.number+strconv.Itoa(i), node, newEs)

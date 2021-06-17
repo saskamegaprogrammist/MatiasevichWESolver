@@ -195,7 +195,6 @@ func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbo
 	return newEs, vars
 }
 
-// TODO: map messes with equations order (important for splitted by equidecomposability)
 func (es *EquationsSystem) Reduce() {
 	if es.IsEmpty() || es.IsSingleEquation() {
 		return
@@ -214,8 +213,10 @@ OUTER:
 		}
 	}
 	var newCompounds = make([]EquationsSystem, 0)
-	for i := range cmap {
-		newCompounds = append(newCompounds, es.compounds[i])
+	for i, elem := range es.compounds {
+		if cmap[i] {
+			newCompounds = append(newCompounds, elem)
+		}
 	}
 	if len(newCompounds) == 1 && newCompounds[0].IsSingleEquation() {
 		es.systemType = SINGLE_EQUATION

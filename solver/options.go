@@ -12,7 +12,9 @@ type SolveOptions struct {
 }
 
 type PrintOptions struct {
-	Png       bool
-	Dot       bool
-	OutputDir string
+	Png            bool
+	Dot            bool
+	OutputDir      string
+	UseDefaultName bool
+	InputFilename  string
 }

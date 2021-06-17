@@ -118,8 +118,9 @@ func Test_Multiplicity_1(t *testing.T) {
 		t.Errorf("Test_Multiplicity_1 failed: error should be nil")
 		return
 	}
-	subst := equation.NewSubstitution(solver.equation.RightPart.Symbols[1], []symbol.Symbol{solver.getLetter()})
-	resultEq := solver.equation.Substitute(subst)
+	solverEq := solver.equationsSystem.Equation()
+	subst := equation.NewSubstitution(solverEq.RightPart.Symbols[1], []symbol.Symbol{solver.getLetter()})
+	resultEq := solverEq.Substitute(subst)
 
 	if resultEq.LeftPart.Length != 4 || resultEq.RightPart.Length != 4 {
 		t.Errorf("Test_Multiplicity_1 failed: wrong substitute result: ")
@@ -137,7 +138,7 @@ func Test_Multiplicity_1(t *testing.T) {
 		}
 	}
 
-	check := analiseMultiplicity(&solver.equation)
+	check := analiseMultiplicity(solverEq)
 	if check {
 		t.Errorf("Test_Multiplicity_1 failed: result should be false")
 	}
@@ -151,8 +152,9 @@ func Test_Multiplicity_2(t *testing.T) {
 		t.Errorf("Test_Multiplicity_2 failed: error should be nil")
 		return
 	}
-	subst := equation.NewSubstitution(solver.equation.RightPart.Symbols[2], []symbol.Symbol{solver.getLetter()})
-	resultEq := solver.equation.Substitute(subst)
+	solverEq := solver.equationsSystem.Equation()
+	subst := equation.NewSubstitution(solverEq.RightPart.Symbols[2], []symbol.Symbol{solver.getLetter()})
+	resultEq := solverEq.Substitute(subst)
 
 	if resultEq.LeftPart.Length != 5 || resultEq.RightPart.Length != 4 {
 		t.Errorf("Test_Multiplicity_2 failed: wrong substitute result: ")
@@ -169,7 +171,7 @@ func Test_Multiplicity_2(t *testing.T) {
 		}
 	}
 
-	check := analiseMultiplicity(&solver.equation)
+	check := analiseMultiplicity(solverEq)
 	if check {
 		t.Errorf("Test_Multiplicity_2 failed: result should be false")
 	}
@@ -183,8 +185,9 @@ func Test_Multiplicity_3(t *testing.T) {
 		t.Errorf("Test_Multiplicity_3 failed: error should be nil")
 		return
 	}
-	subst := equation.NewSubstitution(solver.equation.LeftPart.Symbols[2], []symbol.Symbol{solver.getLetter()})
-	resultEq := solver.equation.Substitute(subst)
+	solverEq := solver.equationsSystem.Equation()
+	subst := equation.NewSubstitution(solverEq.LeftPart.Symbols[2], []symbol.Symbol{solver.getLetter()})
+	resultEq := solverEq.Substitute(subst)
 
 	if resultEq.LeftPart.Length != 7 || resultEq.RightPart.Length != 7 {
 		t.Errorf("Test_Multiplicity_3 failed: wrong substitute result: ")
@@ -204,7 +207,7 @@ func Test_Multiplicity_3(t *testing.T) {
 		}
 	}
 
-	check := analiseMultiplicity(&solver.equation)
+	check := analiseMultiplicity(solverEq)
 	if check {
 		t.Errorf("Test_Multiplicity_3 failed: result should be false")
 	}

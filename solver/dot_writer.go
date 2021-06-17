@@ -11,8 +11,8 @@ type DotWriter struct {
 	writer Writer
 }
 
-func (dotWriter *DotWriter) Init(mode string, eq string, outputDir string) error {
-	err := dotWriter.writer.Init(mode, eq, outputDir)
+func (dotWriter *DotWriter) Init(outName string, defaultFilename bool, outputDir string) error {
+	err := dotWriter.writer.Init(outName, defaultFilename, outputDir)
 	if err != nil {
 		return fmt.Errorf("error initing writer: %v", err)
 	}

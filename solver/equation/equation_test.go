@@ -407,6 +407,7 @@ func TestEquation_SplitByEquidecomposability_Backwards(t *testing.T) {
 		return
 	}
 	system := eq.SplitByEquidecomposability()
+	system.Print()
 	if system.Size != 2 {
 		t.Errorf("TestEquation_SplitByEquidecomposability_Backwards failed: wrong split result: ")
 		system.PrintInfo()
@@ -427,7 +428,7 @@ func TestEquation_SplitByEquidecomposability_Backwards(t *testing.T) {
 
 func TestEquation_SplitByEquidecomposability_Long(t *testing.T) {
 	var eq Equation
-	// x a y c y b = a x y c b y => y b = b y ; c = c ; y = y ; x a = a x
+	// x a y c y b = a x y c b y => y b = b y ; x a = a x
 	err := eq.Init("x a y c y b = a x y c b y", &constAlphNew, &varsAlphNew)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -445,22 +446,18 @@ func TestEquation_SplitByEquidecomposability_Long(t *testing.T) {
 		return
 	}
 	system := eq.SplitByEquidecomposability()
-	if system.Size != 4 {
+	if system.Size != 2 {
 		t.Errorf("TestEquation_SplitByEquidecomposability_Long failed: wrong split result: ")
 		system.PrintInfo()
 	} else {
-		if system.Equations[1].LeftPart.Symbols[0] != symbol.Const("c") ||
-			system.Equations[1].RightPart.Symbols[0] != symbol.Const("c") ||
-			system.Equations[2].LeftPart.Symbols[0] != symbol.Var("y") ||
-			system.Equations[2].RightPart.Symbols[0] != symbol.Var("y") ||
-			system.Equations[0].LeftPart.Symbols[0] != symbol.Var("y") ||
+		if system.Equations[0].LeftPart.Symbols[0] != symbol.Var("y") ||
 			system.Equations[0].LeftPart.Symbols[1] != symbol.Const("b") ||
 			system.Equations[0].RightPart.Symbols[0] != symbol.Const("b") ||
 			system.Equations[0].RightPart.Symbols[1] != symbol.Var("y") ||
-			system.Equations[3].LeftPart.Symbols[0] != symbol.Var("x") ||
-			system.Equations[3].LeftPart.Symbols[1] != symbol.Const("a") ||
-			system.Equations[3].RightPart.Symbols[0] != symbol.Const("a") ||
-			system.Equations[3].RightPart.Symbols[1] != symbol.Var("x") {
+			system.Equations[1].LeftPart.Symbols[0] != symbol.Var("x") ||
+			system.Equations[1].LeftPart.Symbols[1] != symbol.Const("a") ||
+			system.Equations[1].RightPart.Symbols[0] != symbol.Const("a") ||
+			system.Equations[1].RightPart.Symbols[1] != symbol.Var("x") {
 			t.Errorf("TestEquation_SplitByEquidecomposability_Long failed: wrong split result: ")
 			system.PrintInfo()
 		}

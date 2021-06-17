@@ -594,54 +594,85 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 }
 
 func (equation *Equation) Reduce() {
-	equation.FullReduceEmpty()
-	minLen := standart.Min(equation.LeftPart.Length, equation.RightPart.Length)
 	i := 0
-	for ; i < minLen; i++ {
-		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[i] {
+	j := 0
+	for i < equation.LeftPart.Length && j < equation.RightPart.Length {
+		if symbol.IsEmpty(equation.LeftPart.Symbols[i]) {
+			i++
+			continue
+		}
+		if symbol.IsEmpty(equation.RightPart.Symbols[j]) {
+			j++
+			continue
+		}
+		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[j] {
 			break
 		}
 		s := equation.LeftPart.Symbols[i]
 		equation.LeftPart.Structure.Sub(s)
 		equation.RightPart.Structure.Sub(s)
 		equation.structure.SubTimes(s, 2)
-
+		i++
+		j++
 	}
-	if i > 0 {
-		equation.RightPart.Symbols = equation.RightPart.Symbols[i:]
-		equation.RightPart.Length -= i
+	if i > 0 && j > 0 {
+		equation.RightPart.Symbols = equation.RightPart.Symbols[j:]
+		equation.RightPart.Length -= j
 		equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
 		equation.LeftPart.Length -= i
 	}
-	equation.reduceEmptyFromBeginning()
+	i = equation.LeftPart.Length - 1
+	j = equation.RightPart.Length - 1
+	for i >= 0 && j >= 0 {
+		if symbol.IsEmpty(equation.LeftPart.Symbols[i]) {
+			i--
+			continue
+		}
+		if symbol.IsEmpty(equation.RightPart.Symbols[j]) {
+			j--
+			continue
+		}
+		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[j] {
+			break
+		}
+		s := equation.LeftPart.Symbols[i]
+		equation.LeftPart.Structure.Sub(s)
+		equation.RightPart.Structure.Sub(s)
+		equation.structure.SubTimes(s, 2)
+		i--
+		j--
+	}
+	if i != equation.LeftPart.Length-1 && j != equation.RightPart.Length-1 {
+		equation.RightPart.Symbols = equation.RightPart.Symbols[:j+1]
+		equation.RightPart.Length -= j
+		equation.LeftPart.Symbols = equation.LeftPart.Symbols[:i+1]
+		equation.LeftPart.Length -= i
+	}
+	equation.FullReduceEmpty()
 }
 
-func (equation *Equation) reduceEmptyFromBeginning() {
-	i := 0
-	if equation.LeftPart.Length > 1 {
-		for ; i < equation.LeftPart.Length; i++ {
-			if !symbol.IsEmpty(equation.LeftPart.Symbols[i]) {
-				break
-			}
-		}
-		if i > 0 {
-			equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
-			equation.LeftPart.Length -= i
-		}
-	}
-	if equation.RightPart.Length > 1 {
-		i = 0
-		for ; i < equation.RightPart.Length; i++ {
-			if !symbol.IsEmpty(equation.RightPart.Symbols[i]) {
-				break
-			}
-		}
-		if i > 0 {
-			equation.RightPart.Symbols = equation.RightPart.Symbols[i:]
-			equation.RightPart.Length -= i
-		}
-	}
-}
+//func (equation *Equation) Reduce() {
+//	equation.FullReduceEmpty()
+//	minLen := standart.Min(equation.LeftPart.Length, equation.RightPart.Length)
+//	i := 0
+//	for ; i < minLen; i++ {
+//		if equation.LeftPart.Symbols[i] != equation.RightPart.Symbols[i] {
+//			break
+//		}
+//		s := equation.LeftPart.Symbols[i]
+//		equation.LeftPart.Structure.Sub(s)
+//		equation.RightPart.Structure.Sub(s)
+//		equation.structure.SubTimes(s, 2)
+//
+//	}
+//	if i > 0 {
+//		equation.RightPart.Symbols = equation.RightPart.Symbols[i:]
+//		equation.RightPart.Length -= i
+//		equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
+//		equation.LeftPart.Length -= i
+//	}
+//	equation.reduceEmptyFromBeginning()
+//}
 
 func (equation *Equation) FullReduceEmpty() {
 	var equationLeftPart = make([]symbol.Symbol, 0)
@@ -667,7 +698,7 @@ func (equation *Equation) FullReduceEmpty() {
 }
 
 func (equation *Equation) SplitByEquidecomposability() EqSystem {
-	equation.isEquidecomposable = checkEquidecomposability(equation.LeftPart.Symbols, equation.RightPart.Symbols)
+	equation.isEquidecomposable, _ = checkEquidecomposability(equation.LeftPart.Symbols, equation.RightPart.Symbols)
 	defaultSystem := SystemFromEquation(*equation)
 	if equation.LeftPart.Length <= 1 || equation.RightPart.Length <= 1 {
 		return defaultSystem
@@ -681,8 +712,13 @@ func (equation *Equation) SplitByEquidecomposability() EqSystem {
 		secondPart = equation.RightPart.Symbols[:i]
 		firstPartEnd = equation.LeftPart.Symbols[i:]
 		secondPartEnd = equation.RightPart.Symbols[i:]
-		if checkEquidecomposability(firstPart, secondPart) {
-			return createSystem(firstPart, secondPart, firstPartEnd, secondPartEnd)
+		equideComposable, equal := checkEquidecomposability(firstPart, secondPart)
+		if equideComposable {
+			if equal {
+				return createSystemEqual(firstPartEnd, secondPartEnd)
+			} else {
+				return createSystem(firstPart, secondPart, firstPartEnd, secondPartEnd)
+			}
 		}
 	}
 	// backwards order
@@ -691,12 +727,23 @@ func (equation *Equation) SplitByEquidecomposability() EqSystem {
 		secondPart = equation.RightPart.Symbols[minLen-i:]
 		firstPartEnd = equation.LeftPart.Symbols[:minLen-i]
 		secondPartEnd = equation.RightPart.Symbols[:minLen-i]
-		if checkEquidecomposability(firstPart, secondPart) {
-			return createSystem(firstPart, secondPart, firstPartEnd, secondPartEnd)
+		equideComposable, equal := checkEquidecomposability(firstPart, secondPart)
+		if equideComposable {
+			if equal {
+				return createSystemEqual(firstPartEnd, secondPartEnd)
+			} else {
+				return createSystem(firstPart, secondPart, firstPartEnd, secondPartEnd)
+			}
 		}
 	}
 
 	return defaultSystem
+}
+
+func createSystemEqual(firstPartEnd []symbol.Symbol, secondPartEnd []symbol.Symbol) EqSystem {
+	endEq := NewEquation(firstPartEnd, secondPartEnd)
+	endSystem := endEq.SplitByEquidecomposability()
+	return endSystem
 }
 
 func createSystem(firstPart []symbol.Symbol, secondPart []symbol.Symbol, firstPartEnd []symbol.Symbol, secondPartEnd []symbol.Symbol) EqSystem {
@@ -708,9 +755,9 @@ func createSystem(firstPart []symbol.Symbol, secondPart []symbol.Symbol, firstPa
 	return resultSystem
 }
 
-func checkEquidecomposability(firstPart []symbol.Symbol, secondPart []symbol.Symbol) bool {
+func checkEquidecomposability(firstPart []symbol.Symbol, secondPart []symbol.Symbol) (bool, bool) {
 	if len(firstPart) != len(secondPart) {
-		return false
+		return false, false
 	}
 	var length = len(firstPart)
 	var firstVars = make(map[symbol.Symbol]int)
@@ -718,35 +765,43 @@ func checkEquidecomposability(firstPart []symbol.Symbol, secondPart []symbol.Sym
 	var firstConsts = make([]symbol.Symbol, 0)
 	var secondConsts = make([]symbol.Symbol, 0)
 	var isEquidecomposable = true
+	var isEqual = true
 	var firstSym, secondSym symbol.Symbol
 	for i := 0; i < length; i++ {
 		firstSym = firstPart[i]
+		secondSym = secondPart[i]
+		if isEqual && firstSym != secondSym {
+			isEqual = false
+		}
 		if symbol.IsVar(firstSym) || symbol.IsLetter(firstSym) {
 			firstVars[firstSym] += 1
 		} else if symbol.IsConst(firstSym) {
 			firstConsts = append(firstConsts, firstSym)
 		}
-		secondSym = secondPart[i]
+
 		if symbol.IsVar(secondSym) || symbol.IsLetter(secondSym) {
 			secondVars[secondSym] += 1
 		} else if symbol.IsConst(secondSym) {
 			secondConsts = append(secondConsts, secondSym)
 		}
 	}
+	if isEqual {
+		return true, true
+	}
 	// if equation doesn't have vars or letters, checking parts are equal
 	if len(firstVars) == 0 && len(secondVars) == 0 {
 		if len(firstConsts) != len(secondConsts) {
-			return false
+			return false, false
 		}
 		for lS, lN := range firstConsts {
 			if lN != secondConsts[lS] {
-				isEquidecomposable = false
-				break
+				return false, false
 			}
 		}
+		return true, true
 	}
 	if len(firstVars) != len(secondVars) {
-		return false
+		return false, false
 	}
 	for lS, lN := range firstVars {
 		if lN != secondVars[lS] {
@@ -755,9 +810,9 @@ func checkEquidecomposability(firstPart []symbol.Symbol, secondPart []symbol.Sym
 		}
 	}
 	if isEquidecomposable {
-		return true
+		return true, false
 	}
-	return false
+	return false, false
 }
 
 func (equation *Equation) IsQuadratic() bool {

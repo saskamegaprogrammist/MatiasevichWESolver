@@ -267,8 +267,10 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 	}
 	disjunctions := getAllDisjunctions(eqSystems)
 	ds := equation.NewDisjunctionSystem(disjunctions)
+	ds.Print()
 	ds.Simplify()
 	ds.Reduce()
+	ds.Print()
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
@@ -425,8 +427,8 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			nodeToWalk.SetIsSubgraphRoot()
 
 			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(nodeToWalk, sVar)
-			fmt.Println(f1)
-			fmt.Println(f2)
+			//fmt.Println(f1)
+			//fmt.Println(f2)
 
 			var es equation.EquationsSystem
 			var eqType int = equation.EQ_TYPE_SIMPLE

@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
-	FILENAME = "eq_graph_"
-	GraphEXT = ".dot"
-	PicEXT   = ".png"
+	FILENAME      = "eq_graph_"
+	GraphEXT      = ".dot"
+	PicEXT        = ".png"
+	PathSEPARATOR = "/"
+	DOT           = "."
 )
 
 var number = 0
@@ -22,8 +25,25 @@ type Writer struct {
 	outputDir string
 }
 
-func (writer *Writer) createFileName(mode string, eq string) {
-	writer.filename = fmt.Sprintf("%s%c%s%s_%s", writer.outputDir, os.PathSeparator, FILENAME, mode, eq)
+func (writer *Writer) createFileName(name string, defaultFilename bool) {
+	var newName string
+	if defaultFilename {
+		parsed := writer.parseName(name)
+		if parsed == "" {
+			newName = randStr(10)
+		} else {
+			newName = parsed
+		}
+	} else {
+		newName = FILENAME + name
+	}
+	writer.filename = writer.outputDir + PathSEPARATOR + newName
+}
+
+func (writer *Writer) parseName(defaultName string) string {
+	splitted := strings.Split(defaultName, PathSEPARATOR)
+	newSplitted := strings.Split(splitted[len(splitted)-1], DOT)
+	return newSplitted[0]
 }
 
 func (writer *Writer) modifyFileName() {
@@ -44,11 +64,11 @@ func (writer *Writer) GetPicFilename() string {
 	return fmt.Sprintf("%s%s", writer.filename, PicEXT)
 }
 
-func (writer *Writer) Init(mode string, eq string, outputDir string) error {
+func (writer *Writer) Init(outName string, defaultFilename bool, outputDir string) error {
 	var err, fErr error
 	var file *os.File
 	writer.outputDir = outputDir
-	writer.createFileName(mode, eq)
+	writer.createFileName(outName, defaultFilename)
 	_, fErr = os.Stat(writer.GetGraphFilename())
 	for fErr == nil {
 		writer.modifyFileName()
