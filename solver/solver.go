@@ -442,6 +442,9 @@ func newEquationSystemWithSubstitution(oldNode *Node, substitution *equation.Sub
 }
 
 func (solver *Solver) simplifyNode(node *Node) (bool, error) {
+	if !node.simplified.IsEmpty() {
+		return false, nil
+	}
 	node.value.Simplify()
 	node.value.Reduce()
 	regOrdered, simple, err := node.value.SplitIntoRegOrdered()
@@ -473,6 +476,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		newEs.Simplify()
 		child := NewNodeWEquationsSystem(equation.Substitution{},
 			"s"+node.number, node, newEs)
+		child.simplified = child.value
 		node.SetChildren([]*Node{&child})
 	} else if tree.simplified.IsDisjunction() {
 		var newChildNodes = make([]*Node, 0)
@@ -481,12 +485,14 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 			newEs.Simplify()
 			child := NewNodeWEquationsSystem(equation.Substitution{},
 				"s"+node.number+strconv.Itoa(i), node, newEs)
+			child.simplified = child.value
 			newChildNodes = append(newChildNodes, &child)
 		}
 		node.SetChildren(newChildNodes)
 	} else {
 		child := NewNodeWEquationsSystem(equation.Substitution{},
 			"s"+node.number, node, simple)
+		child.simplified = child.value
 		node.SetChildren([]*Node{&child})
 	}
 	return true, nil

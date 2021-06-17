@@ -148,6 +148,10 @@ func (s *Simplifier) compareLetterSubstitutionMaps(maps []map[symbol.Symbol]symb
 	var mapsLen = len(maps)
 	var needsDeletion bool
 	var linkToBigger *map[symbol.Symbol]symbol.Symbol
+	if mapsLen == 1 {
+		*newL = *oldL
+		return
+	}
 	for i, m := range maps {
 		for j := i + 1; j < mapsLen; j++ {
 			needsDeletion, linkToBigger = s.compareLetterMaps(m, maps[j])
@@ -257,25 +261,25 @@ func (s *Simplifier) removeTrueNodesWLetters(node *Node) {
 func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBeen []symbol.Symbol) (equation.EquationsSystem, error) {
 	var resultEquationSystem equation.EquationsSystem
 	var err error
-	var eqSystems []equation.EquationsSystem
-	err = s.walk(node, &eqSystems, symbolVar)
+	var eqSystemsPairs []equation.EquationsSystemPair
+	err = s.walk(node, symbolVar, &eqSystemsPairs)
 	if err != nil {
 		return equation.EquationsSystem{}, fmt.Errorf("error walking node: %v", err)
 	}
-	if len(eqSystems) == 0 {
+	if len(eqSystemsPairs) == 0 {
 		return resultEquationSystem, nil
 	}
-	disjunctions := getAllDisjunctions(eqSystems)
+	disjunctions := getAllDisjunctionsFromPairs(eqSystemsPairs)
 	ds := equation.NewDisjunctionSystem(disjunctions)
-	ds.Print()
+	//ds.Print()
 	ds.Simplify()
 	ds.Reduce()
-	ds.Print()
+	//ds.Print()
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
-		disj.Print()
-		fmt.Println()
+		//disj.Print()
+		//fmt.Println()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -391,7 +395,15 @@ func getAllDisjunctions(eqSystems []equation.EquationsSystem) []equation.Equatio
 	return allDisjunctions
 }
 
-func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, subgraphSymbol symbol.Symbol) error {
+func getAllDisjunctionsFromPairs(eqPairs []equation.EquationsSystemPair) []equation.EquationsSystem {
+	allDisjunctions := make([]equation.EquationsSystem, 0)
+	for _, eqPair := range eqPairs {
+		allDisjunctions = append(allDisjunctions, getAllDisjunctions([]equation.EquationsSystem{eqPair.Simplified()})...)
+	}
+	return allDisjunctions
+}
+
+func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimplified *[]equation.EquationsSystemPair) error {
 	var err error
 	if node.HasFalseChildrenAndBackCycles() || node.LeadsToBackCycle() {
 		return nil
@@ -412,16 +424,23 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			nodeToWalk = node.children[0]
 		}
 
+		var value equation.EquationsSystem
+		for _, as := range *alreadySimplified {
+			value = as.Value()
+			if value.Equals(nodeToWalk.value) {
+				node.SetSimplifiedRepresentation(as.Simplified())
+				return nil
+			}
+		}
+		var es equation.EquationsSystem
+
 		if !nodeToWalk.HasBackCycle() {
 			values := s.walkWithSymbol(nodeToWalk)
 			values.ReduceEmptyVars()
 
-			es := equation.SystemFromValues(sVar, values)
-			node.SetSimplifiedRepresentation(es)
+			es = equation.SystemFromValues(sVar, values)
 			//node.simplified.Print()
 
-			*eqSystems = append(*eqSystems, es)
-			return nil
 		} else {
 
 			nodeToWalk.SetIsSubgraphRoot()
@@ -430,7 +449,6 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 			//fmt.Println(f1)
 			//fmt.Println(f2)
 
-			var es equation.EquationsSystem
 			var eqType int = equation.EQ_TYPE_SIMPLE
 
 			if f2.IsEmpty() {
@@ -455,17 +473,17 @@ func (s *Simplifier) walk(node *Node, eqSystems *[]equation.EquationsSystem, sub
 
 			}
 			//es.Print()
-			node.SetSimplifiedRepresentation(es)
 			//node.simplified.Print()
 
 			nodeToWalk.UnsetIsSubgraphRoot()
-			*eqSystems = append(*eqSystems, es)
-			return nil
 		}
+		*alreadySimplified = append(*alreadySimplified, equation.NewEquationsSystemPair(nodeToWalk.value, es))
+		node.SetSimplifiedRepresentation(es)
+		return nil
 
 	}
 	for _, ch := range node.Children() {
-		err = s.walk(ch, eqSystems, subgraphSymbol)
+		err = s.walk(ch, subgraphSymbol, alreadySimplified)
 		if err != nil {
 			return fmt.Errorf("error walking child: %v", err)
 		}
