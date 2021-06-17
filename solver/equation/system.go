@@ -69,7 +69,7 @@ func (es *EquationsSystem) SplitByEquideComposability() (bool, EquationsSystem) 
 		}
 		newEs = NewDisjunctionSystem(newCompounds)
 	}
-	newEs.Reduce()
+	newEs.RemoveEqual()
 	return splitted, newEs
 }
 
@@ -147,7 +147,7 @@ func (es *EquationsSystem) Substitute(substitute *Substitution) EquationsSystem 
 	var newCompounds = make([]EquationsSystem, 0)
 	for _, c := range es.compounds {
 		newCompound := c.Substitute(substitute)
-		newCompound.Reduce()
+		newCompound.RemoveEqual()
 		if newCompound.IsEmpty() {
 			continue
 		}
@@ -162,7 +162,7 @@ func (es *EquationsSystem) Substitute(substitute *Substitution) EquationsSystem 
 		systemType:        es.systemType,
 		hasOnlyRegOrdered: false,
 	}
-	newEs.Reduce()
+	newEs.RemoveEqual()
 	return newEs
 }
 
@@ -179,7 +179,7 @@ func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbo
 	for _, c := range es.compounds {
 		newCompound, cvars := c.SubstituteVarsWithEmpty()
 		standart.MergeMapsBool(&vars, cvars)
-		newCompound.Reduce()
+		newCompound.RemoveEqual()
 		if newCompound.IsEmpty() {
 			continue
 		}
@@ -191,11 +191,25 @@ func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbo
 		systemType:        es.systemType,
 		hasOnlyRegOrdered: false,
 	}
-	newEs.Reduce()
+	newEs.RemoveEqual()
 	return newEs, vars
 }
 
-func (es *EquationsSystem) Reduce() {
+func (es *EquationsSystem) Reduce() bool {
+	if es.IsEmpty() {
+		return false
+	}
+	if es.IsSingleEquation() {
+		return es.value.Reduce()
+	}
+	var reduced bool
+	for _, c := range es.compounds {
+		reduced = reduced || c.Reduce()
+	}
+	return reduced
+}
+
+func (es *EquationsSystem) RemoveEqual() {
 	if es.IsEmpty() || es.IsSingleEquation() {
 		return
 	}

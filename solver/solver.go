@@ -446,7 +446,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		return false, nil
 	}
 	node.value.Simplify()
-	node.value.Reduce()
+	node.value.RemoveEqual()
 	regOrdered, simple, err := node.value.SplitIntoRegOrdered()
 	if err != nil {
 		return false, fmt.Errorf("error splitting into reg ordered and simple: %v", err)
@@ -474,7 +474,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
 		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{simple, tree.simplified})
 		newEs.Simplify()
-		child := NewNodeWEquationsSystem(equation.Substitution{},
+		child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 			"s"+node.number, node, newEs)
 		child.simplified = child.value
 		node.SetChildren([]*Node{&child})
@@ -483,14 +483,14 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 		for i, c := range tree.simplified.Compounds() {
 			newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{simple, c})
 			newEs.Simplify()
-			child := NewNodeWEquationsSystem(equation.Substitution{},
+			child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 				"s"+node.number+strconv.Itoa(i), node, newEs)
 			child.simplified = child.value
 			newChildNodes = append(newChildNodes, &child)
 		}
 		node.SetChildren(newChildNodes)
 	} else {
-		child := NewNodeWEquationsSystem(equation.Substitution{},
+		child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 			"s"+node.number, node, simple)
 		child.simplified = child.value
 		node.SetChildren([]*Node{&child})
@@ -506,6 +506,16 @@ func (solver *Solver) solveSystem(node *Node) error {
 	if len(node.number) > solver.solveOptions.CycleRange {
 		solver.cycled = true
 		return nil
+	}
+
+	// reducing
+
+	nodeValue := node.value
+	reduced := nodeValue.Reduce()
+	if reduced {
+		child := NewNodeWEquationsSystem(equation.NewSubstitutionReduce(), "p"+node.number, node, nodeValue)
+		node.SetChildren([]*Node{&child})
+		node = &child
 	}
 
 	// checking length
@@ -570,7 +580,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 		splitted, newEs = node.value.SplitByEquideComposability()
 		if splitted {
 			newEs.Simplify()
-			child := NewNodeWEquationsSystem(equation.Substitution{},
+			child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 				"z"+node.number, node, newEs)
 			node.SetChildren([]*Node{&child})
 		}
@@ -766,18 +776,9 @@ func (solver *Solver) describeGraph(node *Node) error {
 
 	for _, child := range node.children {
 		subst := child.Substitution()
-		if subst.IsEmpty() {
-			err = solver.dotWriter.WriteLabelEdgeBold(node, child)
-			if err != nil {
-				return fmt.Errorf("error writing label edge bold: %v", err)
-			}
-		} else {
-			leftSym := subst.LeftPart()
-			rightPart := subst.RightPart()
-			err = solver.dotWriter.WriteLabelEdge(node, child, &leftSym, rightPart)
-			if err != nil {
-				return fmt.Errorf("error writing label edge: %v", err)
-			}
+		err = solver.dotWriter.WriteLabelEdge(node, child, subst.String())
+		if err != nil {
+			return fmt.Errorf("error writing label edge: %v", err)
 		}
 
 		err = solver.describeGraph(child)

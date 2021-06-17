@@ -1,10 +1,13 @@
 package equation
 
-import "github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+import (
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+)
 
 type Substitution struct {
 	leftPart  symbol.Symbol
 	rightPart []symbol.Symbol
+	sType     int
 }
 
 func (s *Substitution) Copy() Substitution {
@@ -53,9 +56,34 @@ func (s *Substitution) ToEquation() Equation {
 	}
 }
 
+func (s *Substitution) String() string {
+	if s.sType == STANDARD {
+		value := s.leftPart.Value() + "->"
+		for _, sym := range s.rightPart {
+			value += sym.Value()
+		}
+		return value
+	} else {
+		return sTypesMap[s.sType]
+	}
+}
+
 func NewSubstitution(leftPart symbol.Symbol, rightPart []symbol.Symbol) Substitution {
 	return Substitution{
 		leftPart:  leftPart,
 		rightPart: rightPart,
+		sType:     STANDARD,
+	}
+}
+
+func NewSubstitutionSplit() Substitution {
+	return Substitution{
+		sType: SPLITTING,
+	}
+}
+
+func NewSubstitutionReduce() Substitution {
+	return Substitution{
+		sType: REDUCING,
 	}
 }

@@ -273,7 +273,7 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 	ds := equation.NewDisjunctionSystem(disjunctions)
 	//ds.Print()
 	ds.Simplify()
-	ds.Reduce()
+	ds.RemoveEqual()
 	//ds.Print()
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)

@@ -164,45 +164,46 @@ func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet 
 	//fmt.Print(varsAlphabet.words)
 	var err error
 	isEq, i := checkEquation(eq)
-	if isEq {
-		equation.structure = EmptyStructure()
-		eqleftPart := eq[0 : i-1]
-		var leftSymbols []symbol.Symbol
-		var leftSymbolsStruct = EmptyStructure()
-		if eqleftPart == "" {
-			leftSymbols = append(leftSymbols, symbol.Empty())
-		} else {
-			leftSymbols, err = matchWithAlphabetsWithSpace(eqleftPart, constAlphabet, varsAlphabet,
-				&leftSymbolsStruct, &equation.structure)
-			if err != nil {
-				return fmt.Errorf("error matching alphabet: %v", err)
-			}
-		}
-		eqRightPart := eq[i+2:]
-		var rightSymbols []symbol.Symbol
-		var rightSymbolsStruct = EmptyStructure()
-		if eqRightPart == "" {
-			rightSymbols = append(rightSymbols, symbol.Empty())
-		} else {
-			rightSymbols, err = matchWithAlphabetsWithSpace(eqRightPart, constAlphabet, varsAlphabet,
-				&rightSymbolsStruct, &equation.structure)
-			if err != nil {
-				return fmt.Errorf("error matching alphabet: %v", err)
-			}
-		}
-		equation.LeftPart = EqPart{
-			Length:    len(leftSymbols),
-			Symbols:   leftSymbols,
-			Structure: leftSymbolsStruct,
-		}
-		equation.RightPart = EqPart{
-			Length:    len(rightSymbols),
-			Symbols:   rightSymbols,
-			Structure: rightSymbolsStruct,
-		}
-		return nil
+	if !isEq {
+		return fmt.Errorf("invalid equation: %s", eq)
+
 	}
-	return fmt.Errorf("invalid equation: %s", eq)
+	equation.structure = EmptyStructure()
+	eqleftPart := eq[0 : i-1]
+	var leftSymbols []symbol.Symbol
+	var leftSymbolsStruct = EmptyStructure()
+	if eqleftPart == "" {
+		leftSymbols = append(leftSymbols, symbol.Empty())
+	} else {
+		leftSymbols, err = matchWithAlphabetsWithSpace(eqleftPart, constAlphabet, varsAlphabet,
+			&leftSymbolsStruct, &equation.structure)
+		if err != nil {
+			return fmt.Errorf("error matching alphabet: %v", err)
+		}
+	}
+	eqRightPart := eq[i+2:]
+	var rightSymbols []symbol.Symbol
+	var rightSymbolsStruct = EmptyStructure()
+	if eqRightPart == "" {
+		rightSymbols = append(rightSymbols, symbol.Empty())
+	} else {
+		rightSymbols, err = matchWithAlphabetsWithSpace(eqRightPart, constAlphabet, varsAlphabet,
+			&rightSymbolsStruct, &equation.structure)
+		if err != nil {
+			return fmt.Errorf("error matching alphabet: %v", err)
+		}
+	}
+	equation.LeftPart = EqPart{
+		Length:    len(leftSymbols),
+		Symbols:   leftSymbols,
+		Structure: leftSymbolsStruct,
+	}
+	equation.RightPart = EqPart{
+		Length:    len(rightSymbols),
+		Symbols:   rightSymbols,
+		Structure: rightSymbolsStruct,
+	}
+	return nil
 }
 
 func checkEquation(eq string) (bool, int) {
@@ -593,7 +594,8 @@ func (equation *Equation) Substitute(substitution Substitution) Equation {
 	return resultEquation
 }
 
-func (equation *Equation) Reduce() {
+func (equation *Equation) Reduce() bool {
+	var reduced bool
 	i := 0
 	j := 0
 	for i < equation.LeftPart.Length && j < equation.RightPart.Length {
@@ -620,6 +622,7 @@ func (equation *Equation) Reduce() {
 		equation.RightPart.Length -= j
 		equation.LeftPart.Symbols = equation.LeftPart.Symbols[i:]
 		equation.LeftPart.Length -= i
+		reduced = true
 	}
 	i = equation.LeftPart.Length - 1
 	j = equation.RightPart.Length - 1
@@ -647,8 +650,10 @@ func (equation *Equation) Reduce() {
 		equation.RightPart.Length -= j
 		equation.LeftPart.Symbols = equation.LeftPart.Symbols[:i+1]
 		equation.LeftPart.Length -= i
+		reduced = true
 	}
 	equation.FullReduceEmpty()
+	return reduced
 }
 
 //func (equation *Equation) Reduce() {

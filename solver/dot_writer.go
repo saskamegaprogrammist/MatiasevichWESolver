@@ -3,7 +3,6 @@ package solver
 import (
 	"fmt"
 	"github.com/goccy/go-graphviz"
-	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"io/ioutil"
 )
 
@@ -50,14 +49,6 @@ func (dotWriter *DotWriter) CreateFiles(makePng bool) error {
 	return nil
 }
 
-func getEdgeLabel(symbol *symbol.Symbol, newSymbols []symbol.Symbol) string {
-	label := fmt.Sprintf("%s->", (*symbol).Value())
-	for _, sym := range newSymbols {
-		label += sym.Value()
-	}
-	return label
-}
-
 func (dotWriter *DotWriter) WriteEdge(from *Node, to *Node) error {
 	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s;\n", from.number, to.number))
 	if err != nil {
@@ -66,8 +57,8 @@ func (dotWriter *DotWriter) WriteEdge(from *Node, to *Node) error {
 	return nil
 }
 
-func (dotWriter *DotWriter) WriteLabelEdge(from *Node, to *Node, symbol *symbol.Symbol, newSymbols []symbol.Symbol) error {
-	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[label=\"%s\"];\n", from.number, to.number, getEdgeLabel(symbol, newSymbols)))
+func (dotWriter *DotWriter) WriteLabelEdge(from *Node, to *Node, label string) error {
+	err := dotWriter.writer.Write(fmt.Sprintf("     %s -> %s[label=\"%s\"];\n", from.number, to.number, label))
 	if err != nil {
 		return fmt.Errorf("error describing edge: %v", err)
 	}
