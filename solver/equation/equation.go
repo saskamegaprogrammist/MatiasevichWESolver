@@ -689,11 +689,11 @@ func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
 			}
 		}
 		if j == 0 {
-			return false, *equation
+			return false, Equation{}
 		} else {
 			if i > j {
 				if i != e.LeftPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 				var leftSymbolsFirst = make([]symbol.Symbol, len(e.RightPart.Symbols))
 				copy(leftSymbolsFirst, e.RightPart.Symbols)
@@ -707,7 +707,7 @@ func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
 				return false, newEq
 			} else {
 				if j != e.RightPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 
 				var rightSymbolsFirst = make([]symbol.Symbol, len(e.LeftPart.Symbols))
@@ -741,11 +741,11 @@ func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
 			}
 		}
 		if j == 0 {
-			return false, *equation
+			return false, Equation{}
 		} else {
 			if i > j {
 				if i != e.RightPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 				var leftSymbolsFirst = make([]symbol.Symbol, len(e.LeftPart.Symbols))
 				copy(leftSymbolsFirst, e.LeftPart.Symbols)
@@ -759,7 +759,7 @@ func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
 				return true, newEq
 			} else {
 				if j != e.LeftPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 				var rightSymbolsFirst = make([]symbol.Symbol, len(e.RightPart.Symbols))
 				copy(rightSymbolsFirst, e.RightPart.Symbols)
@@ -774,7 +774,7 @@ func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
 			}
 		}
 	}
-	return false, *equation
+	return false, Equation{}
 }
 
 func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
@@ -796,11 +796,11 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 			}
 		}
 		if j == 0 {
-			return false, *equation
+			return false, Equation{}
 		} else {
 			if i > j {
 				if i != e.LeftPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 				var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i]))
 				copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i])
@@ -814,7 +814,7 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 				return false, newEq
 			} else {
 				if j != e.RightPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 
 				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j]))
@@ -848,11 +848,11 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 			}
 		}
 		if j == 0 {
-			return false, *equation
+			return false, Equation{}
 		} else {
 			if i > j {
 				if i != e.RightPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 				var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i]))
 				copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i])
@@ -865,7 +865,7 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 				return true, newEq
 			} else {
 				if j != e.LeftPart.Length {
-					return false, *equation
+					return false, Equation{}
 				}
 
 				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j]))
@@ -881,7 +881,81 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 			}
 		}
 	}
-	return false, *equation
+	return false, Equation{}
+}
+
+func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
+	i := 0
+	j := 0
+	var foundLeft, foundRight bool
+	for i < equation.LeftPart.Length && j < equation.RightPart.Length {
+		if foundLeft && foundRight {
+			if equation.LeftPart.Symbols[i] == equation.RightPart.Symbols[j] {
+				foundRight = false
+				foundLeft = false
+				i++
+				j++
+				continue
+			} else {
+				break
+			}
+		}
+		if !foundLeft {
+			if symbol.IsVar(equation.LeftPart.Symbols[i]) {
+				foundLeft = true
+			} else {
+				i++
+			}
+		}
+
+		if !foundRight {
+			if symbol.IsVar(equation.RightPart.Symbols[j]) {
+				foundRight = true
+			} else {
+				j++
+			}
+		}
+	}
+
+	if !(foundLeft && foundRight) {
+		return false, Equation{}
+	}
+	foundLeft = false
+	foundRight = false
+
+	i1 := 0
+	j1 := 0
+
+	for i1 < e.LeftPart.Length && j1 < e.RightPart.Length {
+		if foundLeft && foundRight {
+			if equation.LeftPart.Symbols[i] == equation.RightPart.Symbols[j] {
+				foundRight = false
+				foundLeft = false
+				i++
+				j++
+				continue
+			} else {
+				break
+			}
+		}
+		if !foundLeft {
+			if symbol.IsVar(equation.LeftPart.Symbols[i]) {
+				foundLeft = true
+			} else {
+				i++
+			}
+		}
+
+		if !foundRight {
+			if symbol.IsVar(equation.RightPart.Symbols[j]) {
+				foundRight = true
+			} else {
+				j++
+			}
+		}
+	}
+
+	return false, Equation{}
 }
 
 func (equation *Equation) FullReduceEmpty() {
