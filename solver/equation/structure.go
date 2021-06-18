@@ -151,6 +151,10 @@ func (str *Structure) LettersAndConstsLen() int {
 	return str.constsLen + str.lettersLen
 }
 
+func (str *Structure) Size() int {
+	return str.lettersLen + str.varsLen + str.constsLen
+}
+
 func (str *Structure) Print() {
 	if str.constsLen != 0 {
 		fmt.Println("Constants:")

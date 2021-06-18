@@ -669,3 +669,147 @@ func TestEquation_IsRegularlyOrdered(t *testing.T) {
 		return
 	}
 }
+
+var newEq1 = NewEquation([]symbol.Symbol{
+	symbol.Const("A"), symbol.Var("y"), symbol.Var("x")},
+	[]symbol.Symbol{symbol.Var("x"), symbol.Var("y"), symbol.Const("A")})
+
+func TestEquation_Apply_FirstForward(t *testing.T) {
+	var eq, e, newEq Equation
+	var applied bool
+	var err error
+	// y A x x = x x y A
+	eq = NewEquation([]symbol.Symbol{symbol.Var("y"),
+		symbol.Const("A"), symbol.Var("x"), symbol.Var("x")},
+		[]symbol.Symbol{symbol.Var("x"), symbol.Var("x"), symbol.Var("y"), symbol.Const("A")})
+
+	// x A y = y A x
+	e = NewEquation([]symbol.Symbol{symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("y"), symbol.Const("A"),
+			symbol.Var("x")})
+	e.isEquidecomposable = true
+
+	applied, newEq, err = eq.Apply(e)
+	if err != nil {
+		t.Errorf("TestEquation_Apply_FirstForward err must be nil: %v", err)
+		return
+	}
+	if !applied {
+		t.Errorf("TestEquation_Apply_FirstForward must be applied")
+		return
+	}
+	if !newEq.CheckSameness(&newEq1) {
+		t.Errorf("TestEquation_Apply_FirstForward new equation must be: %v", newEq1.String())
+		return
+	}
+}
+
+var newEq2 = NewEquation([]symbol.Symbol{
+	symbol.Const("A"), symbol.Var("y")},
+	[]symbol.Symbol{symbol.Var("y"), symbol.Const("A")})
+
+func TestEquation_Apply_FirstBackwards(t *testing.T) {
+	var eq, e, newEq Equation
+	var applied bool
+	var err error
+	// x y A x = x x y A
+	eq = NewEquation([]symbol.Symbol{symbol.Var("x"), symbol.Var("y"),
+		symbol.Const("A"), symbol.Var("x")},
+		[]symbol.Symbol{symbol.Var("x"), symbol.Var("x"), symbol.Var("y"), symbol.Const("A")})
+
+	// x A y = y A x
+	e = NewEquation([]symbol.Symbol{symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("y"), symbol.Const("A"),
+			symbol.Var("x")})
+	e.isEquidecomposable = true
+
+	applied, newEq, err = eq.Apply(e)
+	if err != nil {
+		t.Errorf("TestEquation_Apply_FirstBackwards err must be nil: %v", err)
+		return
+	}
+	if !applied {
+		t.Errorf("TestEquation_Apply_FirstBackwards must be applied")
+		return
+	}
+	if !newEq.CheckSameness(&newEq2) {
+		t.Errorf("TestEquation_Apply_FirstBackwards new equation must be: %v", newEq2.String())
+		return
+	}
+}
+
+var newEq3 = NewEquation([]symbol.Symbol{symbol.Const("A"), symbol.Var("z"), symbol.Var("y"),
+	symbol.Const("A"), symbol.Var("x")},
+	[]symbol.Symbol{symbol.Var("z"), symbol.Var("y"), symbol.Var("x"),
+		symbol.Const("A"), symbol.Const("A")})
+
+func TestEquation_Apply_ThirdForward(t *testing.T) {
+	var eq, e, newEq Equation
+	var applied bool
+	var err error
+	// A z x A y = z y x A A
+	eq = NewEquation([]symbol.Symbol{symbol.Const("A"), symbol.Var("z"), symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("z"), symbol.Var("y"), symbol.Var("x"),
+			symbol.Const("A"), symbol.Const("A")})
+
+	// x A y = y A x
+	e = NewEquation([]symbol.Symbol{symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("y"), symbol.Const("A"),
+			symbol.Var("x")})
+	e.isEquidecomposable = true
+
+	applied, newEq, err = eq.Apply(e)
+	if err != nil {
+		t.Errorf("TestEquation_Apply_ThirdForward err must be nil: %v", err)
+		return
+	}
+	if !applied {
+		t.Errorf("TestEquation_Apply_ThirdForward must be applied")
+		return
+	}
+	if !newEq.CheckSameness(&newEq3) {
+		t.Errorf("TestEquation_Apply_ThirdForward new equation must be: %v", newEq3.String())
+		return
+	}
+}
+
+var newEq4 = NewEquation([]symbol.Symbol{symbol.Var("y"),
+	symbol.Const("A"), symbol.Var("x"), symbol.Var("z"), symbol.Const("A")},
+	[]symbol.Symbol{symbol.Var("z"), symbol.Const("A"), symbol.Var("y"), symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("z")})
+
+func TestEquation_Apply_ThirdBackwards(t *testing.T) {
+	var eq, e, newEq Equation
+	var applied bool
+	var err error
+	// x A y z A =  z A y x A z
+	eq = NewEquation([]symbol.Symbol{symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y"), symbol.Var("z"), symbol.Const("A")},
+		[]symbol.Symbol{symbol.Var("z"), symbol.Const("A"), symbol.Var("y"), symbol.Var("x"),
+			symbol.Const("A"), symbol.Var("z")})
+
+	// x A y = y A x
+	e = NewEquation([]symbol.Symbol{symbol.Var("x"),
+		symbol.Const("A"), symbol.Var("y")},
+		[]symbol.Symbol{symbol.Var("y"), symbol.Const("A"),
+			symbol.Var("x")})
+	e.isEquidecomposable = true
+
+	applied, newEq, err = eq.Apply(e)
+	if err != nil {
+		t.Errorf("TestEquation_Apply_ThirdBackwards err must be nil: %v", err)
+		return
+	}
+	if !applied {
+		t.Errorf("TestEquation_Apply_ThirdBackwards must be applied")
+		return
+	}
+	if !newEq.CheckSameness(&newEq4) {
+		t.Errorf("TestEquation_Apply_ThirdBackwards new equation must be: %v", newEq4.String())
+		return
+	}
+}

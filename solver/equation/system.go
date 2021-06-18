@@ -420,8 +420,13 @@ func (es *EquationsSystem) HasEqSystem(system EquationsSystem) bool {
 
 func (es *EquationsSystem) Equals(system EquationsSystem) bool {
 	if es.systemType == system.systemType {
-		if !es.value.IsEmpty() && !system.value.IsEmpty() {
-			return es.value.CheckSameness(&system.value)
+		if es.IsSingleEquation() && es.IsSingleEquation() {
+			if es.value.IsEmpty() && !system.value.IsEmpty() ||
+				!es.value.IsEmpty() && system.value.IsEmpty() {
+				return false
+			} else {
+				return es.value.CheckSameness(&system.value)
+			}
 		} else if len(es.compounds) == len(system.compounds) {
 			compoundsMap := make(map[*EquationsSystem]bool)
 			for _, c := range es.compounds {
