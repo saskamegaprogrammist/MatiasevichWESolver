@@ -1,6 +1,9 @@
 package equation
 
-import "github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+import (
+	"fmt"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
+)
 
 type EqPart struct {
 	Symbols   []symbol.Symbol
@@ -13,6 +16,31 @@ func EmptyEqPart() EqPart {
 		Symbols:   make([]symbol.Symbol, 0),
 		Structure: EmptyStructure(),
 	}
+}
+
+func (eqPart *EqPart) GetSymbolMode(i int, mode int) (symbol.Symbol, error) {
+	switch mode {
+	case FORWARD:
+		return eqPart.GetSymbol(i)
+	case BACKWARDS:
+		return eqPart.GetSymbolFromEnd(i)
+	default:
+		return nil, fmt.Errorf("wrong mode: %v", mode)
+	}
+}
+
+func (eqPart *EqPart) GetSymbol(i int) (symbol.Symbol, error) {
+	if i >= eqPart.Length {
+		return nil, fmt.Errorf("index is out of range")
+	}
+	return eqPart.Symbols[i], nil
+}
+
+func (eqPart *EqPart) GetSymbolFromEnd(i int) (symbol.Symbol, error) {
+	if i >= eqPart.Length {
+		return nil, fmt.Errorf("index is out of range")
+	}
+	return eqPart.Symbols[eqPart.Length-1-i], nil
 }
 
 func (eqPart *EqPart) Copy() EqPart {

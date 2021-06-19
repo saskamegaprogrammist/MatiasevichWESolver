@@ -657,6 +657,7 @@ func (equation *Equation) Reduce() bool {
 }
 
 func (equation *Equation) Apply(e Equation) (bool, Equation, error) {
+	var err error
 	if !e.isEquidecomposable {
 		return false, Equation{}, fmt.Errorf("applied equation %s is not equidecomposable", e.String())
 	}
@@ -665,20 +666,27 @@ func (equation *Equation) Apply(e Equation) (bool, Equation, error) {
 	}
 	var newEq Equation
 	appliedFirstForward, newEq := equation.applyFirstRuleForward(e)
-	if !appliedFirstForward {
-		appliedFirstBackwards, newEq := equation.applyFirstRuleBackwards(e)
-		if !appliedFirstBackwards {
-			appliedThirdForward, newEq := equation.applyThirdRuleForward(e)
-			if !appliedThirdForward {
-				appliedThirdBackwards, newEq := equation.applyThirdRuleBackwards(e)
-				return appliedThirdBackwards, newEq, nil
-			}
-			return appliedThirdForward, newEq, nil
-		}
-		return appliedFirstBackwards, newEq, nil
+	if appliedFirstForward {
+		return appliedFirstForward, newEq, nil
 	}
-	return appliedFirstForward, newEq, nil
 
+	appliedFirstBackwards, newEq := equation.applyFirstRuleBackwards(e)
+	if appliedFirstBackwards {
+		return appliedFirstBackwards, newEq, nil
+
+	}
+	appliedThirdForward, newEq, err := equation.applyThirdRule(e, FORWARD)
+	if err != nil {
+		return appliedFirstBackwards, newEq, fmt.Errorf("error applying third rule backwards: %v", err)
+	}
+	if appliedThirdForward {
+		return appliedThirdForward, newEq, nil
+	}
+	appliedThirdBackwards, newEq, err := equation.applyThirdRule(e, BACKWARDS)
+	if err != nil {
+		return appliedFirstBackwards, newEq, fmt.Errorf("error applying third rule backwards: %v", err)
+	}
+	return appliedThirdBackwards, newEq, nil
 }
 
 func (equation *Equation) applyFirstRuleForward(e Equation) (bool, Equation) {
@@ -895,13 +903,22 @@ func (equation *Equation) applyFirstRuleBackwards(e Equation) (bool, Equation) {
 	return false, Equation{}
 }
 
-func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
-	i := 0
-	j := 0
+func (equation *Equation) applyThirdRule(e Equation, mode int) (bool, Equation, error) {
+	var i, j int
+	var err error
 	var foundLeft, foundRight bool
+	var lSym, rSym, lSymE, rSymE symbol.Symbol
 	for i < equation.LeftPart.Length && j < equation.RightPart.Length {
+		lSym, err = equation.LeftPart.GetSymbolMode(i, mode)
+		if err != nil {
+			return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+		}
+		rSym, err = equation.RightPart.GetSymbolMode(j, mode)
+		if err != nil {
+			return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+		}
 		if foundLeft && foundRight {
-			if equation.LeftPart.Symbols[i] == equation.RightPart.Symbols[j] {
+			if lSym == rSym {
 				foundRight = false
 				foundLeft = false
 				i++
@@ -912,7 +929,7 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 			}
 		}
 		if !foundLeft {
-			if symbol.IsVar(equation.LeftPart.Symbols[i]) {
+			if symbol.IsVar(lSym) {
 				foundLeft = true
 			} else {
 				i++
@@ -920,7 +937,7 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 		}
 
 		if !foundRight {
-			if symbol.IsVar(equation.RightPart.Symbols[j]) {
+			if symbol.IsVar(rSym) {
 				foundRight = true
 			} else {
 				j++
@@ -929,17 +946,24 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 	}
 
 	if !(foundLeft && foundRight) {
-		return false, Equation{}
+		return false, Equation{}, nil
 	}
 	foundLeft = false
 	foundRight = false
 
-	i1 := 0
-	j1 := 0
+	var i1, j1 int
 
 	for i1 < e.LeftPart.Length && j1 < e.RightPart.Length {
+		lSymE, err = e.LeftPart.GetSymbolMode(i1, mode)
+		if err != nil {
+			return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+		}
+		rSymE, err = e.RightPart.GetSymbolMode(j1, mode)
+		if err != nil {
+			return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+		}
 		if foundLeft && foundRight {
-			if e.LeftPart.Symbols[i1] == e.RightPart.Symbols[j1] {
+			if lSymE == rSymE {
 				foundRight = false
 				foundLeft = false
 				i1++
@@ -950,7 +974,7 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 			}
 		}
 		if !foundLeft {
-			if symbol.IsVar(e.LeftPart.Symbols[i1]) {
+			if symbol.IsVar(lSymE) {
 				foundLeft = true
 			} else {
 				i1++
@@ -958,7 +982,7 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 		}
 
 		if !foundRight {
-			if symbol.IsVar(e.RightPart.Symbols[j1]) {
+			if symbol.IsVar(rSymE) {
 				foundRight = true
 			} else {
 				j1++
@@ -967,270 +991,179 @@ func (equation *Equation) applyThirdRuleForward(e Equation) (bool, Equation) {
 	}
 
 	if !(foundLeft && foundRight) {
-		return false, Equation{}
+		return false, Equation{}, nil
 	}
 
-	if checkThirdRuleEqualSides(equation.LeftPart.Symbols[i], equation.RightPart.Symbols[j], e.LeftPart.Symbols[i1], e.RightPart.Symbols[j1]) {
-		i -= i1
-		k := 0
+	var k int
+	var firstIndex, thirdIndex int
+
+	if checkThirdRuleEqualSides(lSym, rSym, lSymE, rSymE) {
+		if mode == FORWARD {
+			i -= i1
+		} else {
+			i += i1
+		}
 		for ; k+i < equation.LeftPart.Length && k < e.LeftPart.Length; k++ {
-			if e.LeftPart.Symbols[k] != equation.LeftPart.Symbols[k+i] {
+			lSym, err = equation.LeftPart.GetSymbolMode(k+i, mode)
+			if err != nil {
+				return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+			}
+			lSymE, err = e.LeftPart.GetSymbolMode(k, mode)
+			if err != nil {
+				return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+			}
+			if lSym != lSymE {
 				break
 			}
 		}
 		if k == e.LeftPart.Length {
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:i]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:i])
+			if mode == FORWARD {
+				firstIndex = i
+				thirdIndex = i + k
+			} else {
+				firstIndex = equation.LeftPart.Length - i - k
+				thirdIndex = equation.LeftPart.Length - i
+			}
+			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:firstIndex]))
+			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:firstIndex])
 			var leftSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
 			copy(leftSymbolsSecond, e.RightPart.Symbols)
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[i+k:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[i+k:])
+			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[thirdIndex:]))
+			copy(leftSymbolsThird, equation.LeftPart.Symbols[thirdIndex:])
 
 			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
 			copy(rightSymbols, equation.RightPart.Symbols)
 			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
 			newEq.Reduce()
-			return true, newEq
+			return true, newEq, nil
 		} else {
-			j -= j1
+			if mode == FORWARD {
+				j -= j1
+			} else {
+				j += j1
+			}
 			k = 0
 			for ; k+j < equation.RightPart.Length && k < e.RightPart.Length; k++ {
-				if e.RightPart.Symbols[k] != equation.RightPart.Symbols[k+j] {
+				rSym, err = equation.RightPart.GetSymbolMode(k+j, mode)
+				if err != nil {
+					return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+				}
+				rSymE, err = e.RightPart.GetSymbolMode(k, mode)
+				if err != nil {
+					return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+				}
+				if rSym != rSymE {
 					break
 				}
 			}
 			if k == e.RightPart.Length {
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:j]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:j])
+				if mode == FORWARD {
+					firstIndex = j
+					thirdIndex = j + k
+				} else {
+					firstIndex = equation.RightPart.Length - j - k
+					thirdIndex = equation.RightPart.Length - j
+				}
+				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:firstIndex]))
+				copy(rightSymbolsFirst, equation.RightPart.Symbols[:firstIndex])
 				var rightSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
 				copy(rightSymbolsSecond, e.LeftPart.Symbols)
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[j+k:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[j+k:])
+				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[thirdIndex:]))
+				copy(rightSymbolsThird, equation.RightPart.Symbols[thirdIndex:])
 
 				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
 				copy(leftSymbols, equation.LeftPart.Symbols)
 				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
 				newEq.Reduce()
-				return true, newEq
+				return true, newEq, nil
 			}
 		}
-	} else if checkThirdRuleDifferentSides(equation.LeftPart.Symbols[i], equation.RightPart.Symbols[j], e.LeftPart.Symbols[i1], e.RightPart.Symbols[j1]) {
-		i -= i1
-		k := 0
+	} else if checkThirdRuleDifferentSides(lSym, rSym, lSymE, rSymE) {
+		if mode == FORWARD {
+			i -= i1
+		} else {
+			i += i1
+		}
 		for ; k+i < equation.RightPart.Length && k < e.RightPart.Length; k++ {
-			if e.RightPart.Symbols[k] != equation.LeftPart.Symbols[k+i] {
+			lSym, err = equation.LeftPart.GetSymbolMode(k+i, mode)
+			if err != nil {
+				return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+			}
+			rSymE, err = e.RightPart.GetSymbolMode(k, mode)
+			if err != nil {
+				return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+			}
+			if lSym != rSymE {
 				break
 			}
 		}
 		if k == e.LeftPart.Length {
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:i]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:i])
+			if mode == FORWARD {
+				firstIndex = i
+				thirdIndex = i + k
+			} else {
+				firstIndex = equation.LeftPart.Length - i - k
+				thirdIndex = equation.LeftPart.Length - i
+			}
+
+			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:firstIndex]))
+			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:firstIndex])
 			var leftSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
 			copy(leftSymbolsSecond, e.LeftPart.Symbols)
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[i+k:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[i+k:])
+			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[thirdIndex:]))
+			copy(leftSymbolsThird, equation.LeftPart.Symbols[thirdIndex:])
 
 			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
 			copy(rightSymbols, equation.RightPart.Symbols)
 			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
 			newEq.Reduce()
-			return true, newEq
+			return true, newEq, nil
 		} else {
-			j -= j1
+			if mode == FORWARD {
+				i -= j1
+			} else {
+				i += j1
+			}
 			k = 0
 			for ; k+j < equation.RightPart.Length && k < e.LeftPart.Length; k++ {
-				if e.LeftPart.Symbols[k] != equation.RightPart.Symbols[k+j] {
+				rSym, err = equation.RightPart.GetSymbolMode(k+j, mode)
+				if err != nil {
+					return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+				}
+				lSymE, err = e.LeftPart.GetSymbolMode(k, mode)
+				if err != nil {
+					return false, Equation{}, fmt.Errorf("error getting symbol: %v", err)
+				}
+				if rSym != lSymE {
 					break
 				}
 			}
 			if k == e.RightPart.Length {
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:j]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:j])
+				if mode == FORWARD {
+					firstIndex = j
+					thirdIndex = j + k
+				} else {
+					firstIndex = equation.RightPart.Length - j - k
+					thirdIndex = equation.RightPart.Length - j
+				}
+
+				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:firstIndex]))
+				copy(rightSymbolsFirst, equation.RightPart.Symbols[:firstIndex])
 				var rightSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
 				copy(rightSymbolsSecond, e.RightPart.Symbols)
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[j+k:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[j+k:])
+				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[thirdIndex:]))
+				copy(rightSymbolsThird, equation.RightPart.Symbols[thirdIndex:])
 
 				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
 				copy(leftSymbols, equation.LeftPart.Symbols)
 				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
 				newEq.Reduce()
-				return true, newEq
+				return true, newEq, nil
 			}
 		}
 	}
 
-	return false, Equation{}
-}
-
-func (equation *Equation) applyThirdRuleBackwards(e Equation) (bool, Equation) {
-	i := 0
-	j := 0
-	var foundLeft, foundRight bool
-	for i < equation.LeftPart.Length && j < equation.RightPart.Length {
-		if foundLeft && foundRight {
-			if equation.LeftPart.Symbols[equation.LeftPart.Length-1-i] == equation.RightPart.Symbols[equation.RightPart.Length-1-j] {
-				foundRight = false
-				foundLeft = false
-				i++
-				j++
-				continue
-			} else {
-				break
-			}
-		}
-		if !foundLeft {
-			if symbol.IsVar(equation.LeftPart.Symbols[equation.LeftPart.Length-1-i]) {
-				foundLeft = true
-			} else {
-				i++
-			}
-		}
-
-		if !foundRight {
-			if symbol.IsVar(equation.RightPart.Symbols[equation.RightPart.Length-1-j]) {
-				foundRight = true
-			} else {
-				j++
-			}
-		}
-	}
-
-	if !(foundLeft && foundRight) {
-		return false, Equation{}
-	}
-	foundLeft = false
-	foundRight = false
-
-	i1 := 0
-	j1 := 0
-
-	for i1 < e.LeftPart.Length && j1 < e.RightPart.Length {
-		if foundLeft && foundRight {
-			if e.LeftPart.Symbols[e.LeftPart.Length-1-i1] == e.RightPart.Symbols[e.RightPart.Length-1-j1] {
-				foundRight = false
-				foundLeft = false
-				i1++
-				j1++
-				continue
-			} else {
-				break
-			}
-		}
-		if !foundLeft {
-			if symbol.IsVar(e.LeftPart.Symbols[e.LeftPart.Length-1-i1]) {
-				foundLeft = true
-			} else {
-				i1++
-			}
-		}
-
-		if !foundRight {
-			if symbol.IsVar(e.RightPart.Symbols[e.RightPart.Length-1-j1]) {
-				foundRight = true
-			} else {
-				j1++
-			}
-		}
-	}
-
-	if !(foundLeft && foundRight) {
-		return false, Equation{}
-	}
-
-	if checkThirdRuleEqualSides(equation.LeftPart.Symbols[equation.LeftPart.Length-1-i], equation.RightPart.Symbols[equation.RightPart.Length-1-j],
-		e.LeftPart.Symbols[e.LeftPart.Length-1-j1], e.RightPart.Symbols[e.RightPart.Length-1-j1]) {
-		i += i1
-		k := 0
-		for ; k+i < equation.LeftPart.Length && k < e.LeftPart.Length; k++ {
-			if e.LeftPart.Symbols[e.LeftPart.Length-1-k] != equation.LeftPart.Symbols[equation.LeftPart.Length-1-k-i] {
-				break
-			}
-		}
-		if k == e.LeftPart.Length {
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[equation.LeftPart.Length-i:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[equation.LeftPart.Length-i:])
-			var leftSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
-			copy(leftSymbolsSecond, e.RightPart.Symbols)
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i-k]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i-k])
-
-			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
-			copy(rightSymbols, equation.RightPart.Symbols)
-			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
-			newEq.Reduce()
-			return true, newEq
-		} else {
-			j += j1
-			k = 0
-			for ; k+j < equation.RightPart.Length && k < e.RightPart.Length; k++ {
-				if e.RightPart.Symbols[e.RightPart.Length-1-k] != equation.RightPart.Symbols[equation.RightPart.Length-k-j] {
-					break
-				}
-			}
-			if k == e.RightPart.Length {
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[equation.LeftPart.Length-j:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[equation.LeftPart.Length-j:])
-				var rightSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
-				copy(rightSymbolsSecond, e.LeftPart.Symbols)
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j-k]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:equation.RightPart.Length-j-k])
-
-				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
-				copy(leftSymbols, equation.LeftPart.Symbols)
-				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
-				newEq.Reduce()
-				return true, newEq
-			}
-		}
-	} else if checkThirdRuleDifferentSides(equation.LeftPart.Symbols[equation.LeftPart.Length-1-i], equation.RightPart.Symbols[equation.RightPart.Length-1-j],
-		e.LeftPart.Symbols[e.LeftPart.Length-1-j1], e.RightPart.Symbols[e.RightPart.Length-1-j1]) {
-		i += i1
-		k := 0
-		for ; k+i < equation.RightPart.Length && k < e.RightPart.Length; k++ {
-			if e.RightPart.Symbols[e.RightPart.Length-1-k] != equation.LeftPart.Symbols[equation.LeftPart.Length-k-i] {
-				break
-			}
-		}
-		if k == e.LeftPart.Length {
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[equation.LeftPart.Length-i:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[equation.LeftPart.Length-i:])
-			var leftSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
-			copy(leftSymbolsSecond, e.LeftPart.Symbols)
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:equation.LeftPart.Length-i-k]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:equation.LeftPart.Length-i-k])
-
-			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
-			copy(rightSymbols, equation.RightPart.Symbols)
-			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
-			newEq.Reduce()
-			return true, newEq
-		} else {
-			j += j1
-			k = 0
-			for ; k+j < equation.RightPart.Length && k < e.LeftPart.Length; k++ {
-				if e.LeftPart.Symbols[e.LeftPart.Length-1-k] != equation.RightPart.Symbols[equation.RightPart.Length-k-j] {
-					break
-				}
-			}
-			if k == e.RightPart.Length {
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[equation.RightPart.Length-j:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[equation.RightPart.Length-j:])
-				var rightSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
-				copy(rightSymbolsSecond, e.RightPart.Symbols)
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:equation.RightPart.Length-j-k]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:equation.RightPart.Length-j-k])
-
-				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
-				copy(leftSymbols, equation.LeftPart.Symbols)
-				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
-				newEq.Reduce()
-				return true, newEq
-			}
-		}
-	}
-
-	return false, Equation{}
+	return false, Equation{}, nil
 }
 
 func checkThirdRuleEqualSides(equationLeft symbol.Symbol, equationRight symbol.Symbol, eLeft symbol.Symbol, eRight symbol.Symbol) bool {
