@@ -30,14 +30,14 @@ func checkLengthRules(eq *equation.Equation) (bool, symbol.Symbol, int) {
 	if diffR > 0 && diffL == 0 && s2 > s1 {
 		return false, nil, 0
 	}
-	if diffL == 1 && s2 >= s1 {
+	if diffL == 1 && diffR == 0 && s2 >= s1 {
 		var newLetters = float64(s2-s1) / diffVL
 		if newLetters-math.Trunc(newLetters) == 0 {
 			return true, diffSymL, int(newLetters)
 		}
 		return false, nil, 0
 	}
-	if diffR == 1 && s2 <= s1 {
+	if diffR == 1 && diffL == 0 && s2 <= s1 {
 		var newLetters = float64(s1-s2) / diffVR
 		if newLetters-math.Trunc(newLetters) == 0 {
 			return true, diffSymR, int(newLetters)

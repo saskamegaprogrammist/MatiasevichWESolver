@@ -60,7 +60,7 @@ func (s *Substitution) String() string {
 	if s.sType == STANDARD {
 		value := s.leftPart.Value() + "->"
 		for _, sym := range s.rightPart {
-			value += sym.Value()
+			value += " " + sym.Value()
 		}
 		return value
 	} else {
@@ -88,8 +88,14 @@ func NewSubstitutionReduce() Substitution {
 	}
 }
 
-func NewSubstituionApply() Substitution {
+func NewSubstitutionApply() Substitution {
 	return Substitution{
 		sType: APPLYING,
+	}
+}
+
+func NewSubstitutionSimplify() Substitution {
+	return Substitution{
+		sType: SIMPLIFYING,
 	}
 }

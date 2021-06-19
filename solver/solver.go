@@ -474,7 +474,7 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	if tree.simplified.IsConjunction() || tree.simplified.IsSingleEquation() {
 		newEs := equation.NewConjunctionSystem([]equation.EquationsSystem{simple, tree.simplified})
 		newEs.Simplify()
-		child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
+		child := NewNodeWEquationsSystem(equation.NewSubstitutionSimplify(),
 			"s"+node.number, node, newEs)
 		child.simplified = child.value
 		node.SetChildren([]*Node{&child})
@@ -510,8 +510,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 	// reducing
 
-	nodeValue := node.value
-	reduced := nodeValue.Reduce()
+	reduced, nodeValue := node.value.Reduce()
 	if reduced {
 		child := NewNodeWEquationsSystem(equation.NewSubstitutionReduce(), "p"+node.number, node, nodeValue)
 		node.SetChildren([]*Node{&child})
@@ -580,6 +579,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 		splitted, newEs = node.value.SplitByEquideComposability()
 		if splitted {
 			newEs.Simplify()
+			newEs.Reorder()
 			child := NewNodeWEquationsSystem(equation.NewSubstitutionSplit(),
 				"z"+node.number, node, newEs)
 			node.SetChildren([]*Node{&child})
@@ -598,7 +598,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 			return fmt.Errorf("error during applying system: %v", err)
 		}
 		if applied {
-			child := NewNodeWEquationsSystem(equation.NewSubstituionApply(), "i"+node.number, node, nodeValue)
+			child := NewNodeWEquationsSystem(equation.NewSubstitutionApply(), "i"+node.number, node, nodeValue)
 			node.SetChildren([]*Node{&child})
 			node = &child
 		}

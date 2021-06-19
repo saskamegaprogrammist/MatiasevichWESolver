@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/standart"
+	"sort"
 	"strings"
 )
 
@@ -78,6 +79,27 @@ func (es *EquationsSystem) Compounds() []EquationsSystem {
 		return []EquationsSystem{*es}
 	}
 	return es.compounds
+}
+
+func (es *EquationsSystem) Reorder() {
+	var newCompounds = make([]EquationsSystem, len(es.compounds))
+	var indexes = make([]int, 0)
+	var eqs = make([]Equation, 0)
+	if es.IsConjunction() {
+		for i, c := range es.compounds {
+			if !c.IsSingleEquation() || c.value.isEquidecomposable || c.value.isRegularlyOrdered {
+				newCompounds[i] = c
+			} else {
+				indexes = append(indexes, i)
+				eqs = append(eqs, c.value)
+			}
+		}
+		sort.Sort(EquationsByLength(eqs))
+		for i, ind := range indexes {
+			newCompounds[ind] = NewSingleEquation(eqs[i])
+		}
+		es.compounds = newCompounds
+	}
 }
 
 func (es *EquationsSystem) Simplify() {
@@ -195,18 +217,28 @@ func (es *EquationsSystem) SubstituteVarsWithEmpty() (EquationsSystem, map[symbo
 	return newEs, vars
 }
 
-func (es *EquationsSystem) Reduce() bool {
+func (es *EquationsSystem) Reduce() (bool, EquationsSystem) {
+	var reduced, reducedCurr bool
 	if es.IsEmpty() {
-		return false
+		return false, *es
 	}
 	if es.IsSingleEquation() {
-		return es.value.Reduce()
+		newEq := es.value.Copy()
+		reduced = newEq.Reduce()
+		return reduced, NewSingleEquation(newEq)
 	}
-	var reduced bool
+	var newEqSystems []EquationsSystem
+	var n EquationsSystem
 	for _, c := range es.compounds {
-		reduced = reduced || c.Reduce()
+		reducedCurr, n = c.Reduce()
+		reduced = reduced || reducedCurr
+
+		newEqSystems = append(newEqSystems, n)
 	}
-	return reduced
+	if es.IsConjunction() {
+		return reduced, NewConjunctionSystem(newEqSystems)
+	}
+	return reduced, NewDisjunctionSystem(newEqSystems)
 }
 
 func (es *EquationsSystem) Apply() (bool, error) {
