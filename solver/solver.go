@@ -512,6 +512,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 	reduced, nodeValue := node.value.Reduce()
 	if reduced {
+		nodeValue.Reorder()
 		child := NewNodeWEquationsSystem(equation.NewSubstitutionReduce(), "p"+node.number, node, nodeValue)
 		node.SetChildren([]*Node{&child})
 		node = &child
