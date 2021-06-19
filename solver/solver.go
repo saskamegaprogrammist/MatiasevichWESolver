@@ -592,6 +592,7 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 	if solver.solveOptions.ApplyEquations {
 		nodeValue = node.value
+		//nodeValue.Print()
 		applied, err := nodeValue.Apply()
 		if err != nil {
 			return fmt.Errorf("error during applying system: %v", err)
