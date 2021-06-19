@@ -70,7 +70,8 @@ func (eqSystem *EqSystem) CheckSameness(system *EqSystem) bool {
 
 func (eqSystem *EqSystem) CheckInequality() bool {
 	for _, eq := range eqSystem.Equations {
-		if eq.CheckInequality() {
+		unequal, _ := eq.CheckInequality()
+		if unequal {
 			return true
 		}
 	}

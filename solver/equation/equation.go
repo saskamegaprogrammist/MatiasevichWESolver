@@ -16,14 +16,6 @@ type Equation struct {
 
 const EQUALS = "="
 
-type EquationsByLength []Equation
-
-func (ebl EquationsByLength) Len() int { return len(ebl) }
-func (ebl EquationsByLength) Less(i, j int) bool {
-	return ebl[i].structure.Size() < ebl[j].structure.Size()
-}
-func (ebl EquationsByLength) Swap(i, j int) { ebl[i], ebl[j] = ebl[j], ebl[i] }
-
 func (equation *Equation) Structure() *Structure {
 	return &equation.structure
 }
@@ -381,27 +373,53 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 	return symbols, nil
 }
 
-func (equation *Equation) CheckInequality() bool {
+func (equation *Equation) CheckInequality() (bool, error) {
+	var err error
 	//equation.Print()
 	if equation.IsRightEmpty() {
 		if equation.LeftPart.Length > 0 {
 			for _, sym := range equation.LeftPart.Symbols {
 				if symbol.IsLetter(sym) || symbol.IsConst(sym) {
-					return true
+					return true, nil
 				}
 			}
 		}
-	}
-	if equation.IsLeftEmpty() {
+	} else if equation.IsLeftEmpty() {
 		if equation.RightPart.Length > 0 {
 			for _, sym := range equation.RightPart.Symbols {
 				if symbol.IsLetter(sym) || symbol.IsConst(sym) {
-					return true
+					return true, nil
 				}
 			}
 		}
+	} else {
+		var firstLeft, firstRight symbol.Symbol
+		firstLeft, err = equation.LeftPart.GetSymbol(0)
+		if err != nil {
+			return false, fmt.Errorf("error getting first symbol: %v", err)
+		}
+		firstRight, err = equation.RightPart.GetSymbol(0)
+		if err != nil {
+			return false, fmt.Errorf("error getting first symbol: %v", err)
+		}
+		if symbol.IsConst(firstLeft) && symbol.IsConst(firstRight) && firstLeft != firstRight {
+			return true, nil
+		}
+
+		var lastLeft, lastRight symbol.Symbol
+		lastLeft, err = equation.LeftPart.GetSymbolFromEnd(0)
+		if err != nil {
+			return false, fmt.Errorf("error getting first symbol: %v", err)
+		}
+		lastRight, err = equation.RightPart.GetSymbolFromEnd(0)
+		if err != nil {
+			return false, fmt.Errorf("error getting first symbol: %v", err)
+		}
+		if symbol.IsConst(lastLeft) && symbol.IsConst(lastRight) && lastLeft != lastRight {
+			return true, nil
+		}
 	}
-	return false
+	return false, nil
 }
 
 func (equation *Equation) CheckEquality() bool {

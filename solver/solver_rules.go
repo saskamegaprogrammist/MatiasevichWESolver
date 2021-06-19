@@ -59,7 +59,7 @@ func checkEquality(node *Node) bool {
 	return node.value.CheckEquality()
 }
 
-func checkInequality(node *Node) bool {
+func checkInequality(node *Node) (bool, error) {
 	return node.value.CheckInequality()
 }
 

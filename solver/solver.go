@@ -548,7 +548,12 @@ func (solver *Solver) solveSystem(node *Node) error {
 	}
 
 	//fmt.Println(node.number)
-	if checkInequality(node) {
+	var isUnequal bool
+	isUnequal, err = checkInequality(node)
+	if err != nil {
+		return fmt.Errorf("error checking inequality: %v", err)
+	}
+	if isUnequal {
 		solver.createFalseNode(node, REGULAR_FALSE)
 		return nil
 	}

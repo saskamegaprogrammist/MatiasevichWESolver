@@ -411,16 +411,22 @@ func (es *EquationsSystem) IsEmpty() bool {
 	return es.systemType == EMPTY
 }
 
-func (es *EquationsSystem) CheckInequality() bool {
+func (es *EquationsSystem) CheckInequality() (bool, error) {
+	var err error
 	if es.IsSingleEquation() {
 		return es.value.CheckInequality()
 	}
+	var unEqual bool
 	for _, eq := range es.compounds {
-		if eq.CheckInequality() {
-			return true
+		unEqual, err = eq.CheckInequality()
+		if err != nil {
+			return false, err
+		}
+		if unEqual {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func (es *EquationsSystem) CheckEquality() bool {
