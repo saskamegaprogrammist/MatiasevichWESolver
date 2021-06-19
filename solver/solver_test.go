@@ -2,6 +2,8 @@ package solver
 
 import (
 	"fmt"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver/equation/symbol"
 	"testing"
 )
 
@@ -16,6 +18,15 @@ var solveOptionsInvalid = SolveOptions{
 var solveOptionsFinite = SolveOptions{
 	LengthAnalysis:             false,
 	SplitByEquidecomposability: false,
+	CycleRange:                 20,
+	FullGraph:                  false,
+	AlgorithmMode:              "Finite",
+	FullSystem:                 false,
+}
+
+var solveOptionsFiniteSplit = SolveOptions{
+	LengthAnalysis:             false,
+	SplitByEquidecomposability: true,
 	CycleRange:                 20,
 	FullGraph:                  false,
 	AlgorithmMode:              "Finite",
@@ -50,6 +61,12 @@ var solveOptionsStandardWLength = SolveOptions{
 var printOptions = PrintOptions{
 	Dot:       false,
 	Png:       false,
+	OutputDir: "../output_files",
+}
+
+var printOptionsPrint = PrintOptions{
+	Dot:       true,
+	Png:       true,
 	OutputDir: "../output_files",
 }
 
@@ -229,34 +246,35 @@ func Test_Solve_5(t *testing.T) {
 	}
 }
 
-//var testEq = equation.NewEquation([]symbol.Symbol{symbol.LetterVar("c"),
-//	symbol.Const("A"), symbol.Const("B"), symbol.Var("x")}, []symbol.Symbol{symbol.Var("x"),
-//	symbol.Const("B"), symbol.LetterVar("c"), symbol.Const("A")})
-//
-//func Test_Solve_6(t *testing.T) {
-//	var solver Solver
-//	err := solver.InitWoEquation("{A, B}", "{x, y}", PrintOptions{
-//		Png:       true,
-//		Dot:       true,
-//		OutputDir: "../output_files",
-//	}, solveOptionsFiniteFullGraph)
-//	if err != nil {
-//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error initializing solver: %v \n", err))
-//		return
-//	}
-//	err = solver.setLetterAlphabet("{c, r, t}")
-//	if err != nil {
-//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error setting letters alphabet: %v \n", err))
-//		return
-//	}
-//	err = solver.SetEquation(testEq)
-//	if err != nil {
-//		t.Errorf("Test_Solve_6 error should be nil: %v", fmt.Sprintf("error setting letters alphabet: %v \n", err))
-//		return
-//	}
-//
-//	result, _, _ := solver.Solve()
-//	if result != falseStr {
-//		t.Errorf("Test_Solve_6 result should be: %s, but got: %s", falseStr, result)
-//	}
-//}
+// c d f e d b c f g a f b c = pl sy ie dh uf iu jm lf kw ic ex ih jb
+
+// c d f = pl sy ie
+
+var eq = equation.NewEquation([]symbol.Symbol{symbol.Const("c"), symbol.Const("d"), symbol.Const("f")},
+	[]symbol.Symbol{symbol.LetterVar("c"), symbol.LetterVar("sy"), symbol.LetterVar("ie")})
+
+func Test_Solve_6(t *testing.T) {
+	var solver Solver
+	err := solver.InitWoEquation("{c, e, f, d, b, g, a}", "{x, y}", printOptions, solveOptionsFiniteSplit)
+	if err != nil {
+		fmt.Printf("error initializing solver: %v \n", err)
+		t.Errorf("Test_Solve_6 error should be nil")
+		return
+	}
+	err = solver.SetEquation(eq)
+	if err != nil {
+		fmt.Printf("error setting equation: %v \n", err)
+		t.Errorf("Test_Solve_6 error should be nil")
+		return
+	}
+	err = solver.setLetterAlphabet("{pl, sy, ie, dh, uf, iu, jm, lf, kw, ic, ex, ih, jb}")
+	if err != nil {
+		fmt.Printf("error setting letters alphabet: %v \n", err)
+		t.Errorf("Test_Solve_6 error should be nil")
+		return
+	}
+	result, _, _ := solver.Solve()
+	if result != trueStr {
+		t.Errorf("Test_Solve_6 result should be: %s, but got: %s", trueStr, result)
+	}
+}
