@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/google/logger"
+	"github.com/saskamegaprogrammist/MatiasevichWESolver/info_writer"
 	matlog "github.com/saskamegaprogrammist/MatiasevichWESolver/logger"
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver"
 	"os"
@@ -47,7 +48,7 @@ func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bo
 		*lengthAnalysis, *simplification, *defaultName, *solveSystem, *applying
 }
 
-func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
+func process(infoWriter *info_writer.InfoWriter, inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 	cycleRange int, outputDir string, splitByEq bool, fullSystem bool,
 	lengthAnalysis bool, simplification bool, defaultName bool, solveSystem bool, applying bool) {
 	var err error
@@ -101,6 +102,10 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 			if equation == "" {
 				break
 			}
+			err = infoWriter.WriteEquation(equation)
+			if err != nil {
+				logger.Errorf("error writing to info file: %v", err)
+			}
 			equations = append(equations, equation)
 		}
 		err = eqSolver.InitWithSystem(constantsAlph, varsAlph, equations, printOptions, solveOptions)
@@ -110,6 +115,10 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 			return
 		}
 		equation = scanner.Text()
+		err = infoWriter.WriteEquation(equation)
+		if err != nil {
+			logger.Errorf("error writing to info file: %v", err)
+		}
 		err = eqSolver.Init(constantsAlph, varsAlph, equation, printOptions, solveOptions)
 	}
 
@@ -117,17 +126,43 @@ func process(inputSource *os.File, fullGraph bool, makePng bool, makeDot bool,
 		logger.Errorf("error initializing solver: %v", err)
 		return
 	}
+	err = infoWriter.WriteFormat(solveOptions.AlgorithmMode)
+	if err != nil {
+		logger.Errorf("error writing to info file: %v", err)
+	}
+
 	hasSolution, measuredTime, err := eqSolver.Solve()
 	if err != nil {
 		logger.Errorf("error writing graph: %v", err)
 	}
 	fmt.Printf("took time: %v \ngot solution: %s \n\n", measuredTime, hasSolution)
+
+	err = infoWriter.WriteTime(measuredTime)
+	if err != nil {
+		logger.Errorf("error writing to info file: %v", err)
+	}
+
+	err = infoWriter.WriteSolution(hasSolution)
+	if err != nil {
+		logger.Errorf("error writing to info file: %v", err)
+	}
+
+	err = infoWriter.Flush()
+	if err != nil {
+		logger.Errorf("error writing info: %v", err)
+	}
 }
 
 func main() {
 	matlog.LoggerSetup()
 	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, makeDot,
 		splitByEquidecomposability, fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying := parseFLags()
+
+	var infoWriter info_writer.InfoWriter
+	err := infoWriter.Init()
+	if err != nil {
+		logger.Errorf("error initing info writer: %v", err)
+	}
 
 	if inputDirName != "" {
 		inputDir, err := os.Open(inputDirName)
@@ -148,7 +183,7 @@ func main() {
 			if err != nil {
 				logger.Errorf("error opening input file: %v", err)
 			}
-			process(inputFile, fullGraph, makePng, makeDot,
+			process(&infoWriter, inputFile, fullGraph, makePng, makeDot,
 				cycleRange, outputDir, splitByEquidecomposability,
 				fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 		}
@@ -157,11 +192,11 @@ func main() {
 		if err != nil {
 			logger.Errorf("error opening input file: %v", err)
 		}
-		process(inputFile, fullGraph, makePng, makeDot,
+		process(&infoWriter, inputFile, fullGraph, makePng, makeDot,
 			cycleRange, outputDir, splitByEquidecomposability,
 			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 	} else {
-		process(os.Stdin, fullGraph, makePng, makeDot,
+		process(&infoWriter, os.Stdin, fullGraph, makePng, makeDot,
 			cycleRange, outputDir, splitByEquidecomposability,
 			fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying)
 	}

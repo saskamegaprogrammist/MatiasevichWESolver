@@ -26,5 +26,7 @@ a_1
 input_files/checked
 input_files/checked2
 output_files
-vkr_output
+first_track_standard_output
+generated_track1_standard
+info.txt
 *.txt

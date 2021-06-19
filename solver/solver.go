@@ -53,6 +53,7 @@ func (solver *Solver) Init(constantsAlph string, varsAlph string, eq string,
 	}
 	solver.equationsSystem.Print()
 	fmt.Println(solveOptions.AlgorithmMode)
+
 	return nil
 }
 
@@ -78,7 +79,6 @@ func (solver *Solver) InitWithSystem(constantsAlph string, varsAlph string, equa
 	solver.equationsSystem = eqSystem
 
 	fmt.Println(solveOptions.AlgorithmMode)
-
 	return nil
 }
 
@@ -137,7 +137,6 @@ func (solver *Solver) init(constantsAlph string, varsAlph string,
 		solver.printOptions.Png = false
 		logger.Infof("program won't create png file because it's not creating dot file")
 	}
-
 	return nil
 }
 
@@ -308,16 +307,14 @@ func (solver *Solver) Solve() (string, time.Duration, error) {
 			if err != nil {
 				return "", duration, fmt.Errorf("error solving regularly ordered equation as system : %v", err)
 			}
-			result := solver.getAnswer()
-			return result, duration, nil
+			return solver.getAnswer(), duration, nil
 		}
 	} else {
 		duration, err = solver.solveEquationsSystem(solver.equationsSystem)
 		if err != nil {
 			return "", duration, fmt.Errorf("error solving equation: %v", err)
 		}
-		result := solver.getAnswer()
-		return result, duration, nil
+		return solver.getAnswer(), duration, nil
 	}
 }
 

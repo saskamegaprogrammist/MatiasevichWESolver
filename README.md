@@ -1,6 +1,6 @@
-# Compilers course work
+# Diploma
 
-Matiasevich word equations solver
+Matiasevich word equations solver with words transformations
 
 ### flags:
 
@@ -46,7 +46,7 @@ Matiasevich word equations solver
 - cycle_range - 
 *int* cycle depth
 
-### run app:
+### run solver:
 
 ` go run main.go -full_graph -input_directory=checked `
 
