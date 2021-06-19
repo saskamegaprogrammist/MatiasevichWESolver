@@ -1024,16 +1024,7 @@ func (equation *Equation) applyThirdRule(e Equation, mode int) (bool, Equation, 
 				firstIndex = equation.LeftPart.Length - i - k
 				thirdIndex = equation.LeftPart.Length - i
 			}
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:firstIndex]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:firstIndex])
-			var leftSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
-			copy(leftSymbolsSecond, e.RightPart.Symbols)
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[thirdIndex:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[thirdIndex:])
-
-			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
-			copy(rightSymbols, equation.RightPart.Symbols)
-			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
+			newEq := createNewEqThirdRuleWLeftAndRight(*equation, e, firstIndex, thirdIndex)
 			newEq.Reduce()
 			return true, newEq, nil
 		} else {
@@ -1064,17 +1055,7 @@ func (equation *Equation) applyThirdRule(e Equation, mode int) (bool, Equation, 
 					firstIndex = equation.RightPart.Length - j - k
 					thirdIndex = equation.RightPart.Length - j
 				}
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:firstIndex]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:firstIndex])
-				var rightSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
-				copy(rightSymbolsSecond, e.LeftPart.Symbols)
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[thirdIndex:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[thirdIndex:])
-
-				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
-				copy(leftSymbols, equation.LeftPart.Symbols)
-				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
-				newEq.Reduce()
+				newEq := createNewEqThirdRuleWRightAndLeft(*equation, e, firstIndex, thirdIndex)
 				return true, newEq, nil
 			}
 		}
@@ -1105,18 +1086,7 @@ func (equation *Equation) applyThirdRule(e Equation, mode int) (bool, Equation, 
 				firstIndex = equation.LeftPart.Length - i - k
 				thirdIndex = equation.LeftPart.Length - i
 			}
-
-			var leftSymbolsFirst = make([]symbol.Symbol, len(equation.LeftPart.Symbols[:firstIndex]))
-			copy(leftSymbolsFirst, equation.LeftPart.Symbols[:firstIndex])
-			var leftSymbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
-			copy(leftSymbolsSecond, e.LeftPart.Symbols)
-			var leftSymbolsThird = make([]symbol.Symbol, len(equation.LeftPart.Symbols[thirdIndex:]))
-			copy(leftSymbolsThird, equation.LeftPart.Symbols[thirdIndex:])
-
-			var rightSymbols = make([]symbol.Symbol, len(equation.RightPart.Symbols))
-			copy(rightSymbols, equation.RightPart.Symbols)
-			newEq := NewEquation(append(leftSymbolsFirst, append(leftSymbolsSecond, leftSymbolsThird...)...), rightSymbols)
-			newEq.Reduce()
+			newEq := createNewEqThirdRuleWLeftAndLeft(*equation, e, firstIndex, thirdIndex)
 			return true, newEq, nil
 		} else {
 			if mode == FORWARD {
@@ -1147,23 +1117,67 @@ func (equation *Equation) applyThirdRule(e Equation, mode int) (bool, Equation, 
 					thirdIndex = equation.RightPart.Length - j
 				}
 
-				var rightSymbolsFirst = make([]symbol.Symbol, len(equation.RightPart.Symbols[:firstIndex]))
-				copy(rightSymbolsFirst, equation.RightPart.Symbols[:firstIndex])
-				var rightSymbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
-				copy(rightSymbolsSecond, e.RightPart.Symbols)
-				var rightSymbolsThird = make([]symbol.Symbol, len(equation.RightPart.Symbols[thirdIndex:]))
-				copy(rightSymbolsThird, equation.RightPart.Symbols[thirdIndex:])
-
-				var leftSymbols = make([]symbol.Symbol, len(equation.LeftPart.Symbols))
-				copy(leftSymbols, equation.LeftPart.Symbols)
-				newEq := NewEquation(leftSymbols, append(rightSymbolsFirst, append(rightSymbolsSecond, rightSymbolsThird...)...))
-				newEq.Reduce()
+				newEq := createNewEqThirdRuleWRightAndRight(*equation, e, firstIndex, thirdIndex)
 				return true, newEq, nil
 			}
 		}
 	}
 
 	return false, Equation{}, nil
+}
+
+func createNewEqThirdRuleWLeftAndLeft(equation, e Equation, firstIndex, thirdIndex int) Equation {
+	return createNewEqThirdRule(equation, e, firstIndex, thirdIndex, LEFT, LEFT)
+}
+
+func createNewEqThirdRuleWLeftAndRight(equation, e Equation, firstIndex, thirdIndex int) Equation {
+	return createNewEqThirdRule(equation, e, firstIndex, thirdIndex, LEFT, RIGHT)
+}
+
+func createNewEqThirdRuleWRightAndLeft(equation, e Equation, firstIndex, thirdIndex int) Equation {
+	return createNewEqThirdRule(equation, e, firstIndex, thirdIndex, RIGHT, LEFT)
+}
+
+func createNewEqThirdRuleWRightAndRight(equation, e Equation, firstIndex, thirdIndex int) Equation {
+	return createNewEqThirdRule(equation, e, firstIndex, thirdIndex, RIGHT, RIGHT)
+}
+
+func createNewEqThirdRule(equation, e Equation, firstIndex, thirdIndex int, side, sideE int) Equation {
+	var newEq Equation
+	var equationToSplit, equationOriginal []symbol.Symbol
+	if side == RIGHT {
+		equationToSplit = equation.RightPart.Symbols
+		equationOriginal = equation.LeftPart.Symbols
+	} else {
+		equationToSplit = equation.LeftPart.Symbols
+		equationOriginal = equation.RightPart.Symbols
+	}
+
+	var symbolsFirst = make([]symbol.Symbol, len(equationToSplit[:firstIndex]))
+	copy(symbolsFirst, equationToSplit[:firstIndex])
+	var symbolsSecond []symbol.Symbol
+	if sideE == RIGHT {
+		symbolsSecond = make([]symbol.Symbol, len(e.RightPart.Symbols))
+		copy(symbolsSecond, e.RightPart.Symbols)
+	} else {
+		symbolsSecond = make([]symbol.Symbol, len(e.LeftPart.Symbols))
+		copy(symbolsSecond, e.LeftPart.Symbols)
+	}
+
+	var symbolsThird = make([]symbol.Symbol, len(equationToSplit[thirdIndex:]))
+	copy(symbolsThird, equationToSplit[thirdIndex:])
+
+	newS := append(symbolsFirst, append(symbolsSecond, symbolsThird...)...)
+
+	var originalCopy = make([]symbol.Symbol, len(equationOriginal))
+	copy(originalCopy, equationOriginal)
+	if side == RIGHT {
+		newEq = NewEquation(originalCopy, newS)
+	} else {
+		newEq = NewEquation(newS, originalCopy)
+	}
+	newEq.Reduce()
+	return newEq
 }
 
 func checkThirdRuleEqualSides(equationLeft symbol.Symbol, equationRight symbol.Symbol, eLeft symbol.Symbol, eRight symbol.Symbol) bool {
