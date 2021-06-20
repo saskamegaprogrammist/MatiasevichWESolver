@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	INFONAME = "info.txt"
+	INFONAME = "info_second_track_standard_2.txt"
 )
 
 type InfoWriter struct {
@@ -16,10 +16,13 @@ type InfoWriter struct {
 	file   *os.File
 }
 
-func (infoWriter *InfoWriter) Init() error {
+func (infoWriter *InfoWriter) Init(filename string) error {
 	var err error
 	var file *os.File
-	file, err = os.Create(INFONAME)
+	if filename == "" {
+		filename = INFONAME
+	}
+	file, err = os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("error creating file: %v", err)
 	}

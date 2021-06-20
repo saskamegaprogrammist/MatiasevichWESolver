@@ -79,7 +79,7 @@ func (s *Simplifier) simplifyNode(node *Node) (equation.EquationsSystem, error) 
 	subgraphSymbol := symbols[0]
 	resSystem, err = s.simplify(node, subgraphSymbol, []symbol.Symbol{subgraphSymbol})
 	if err != nil {
-		return resSystem, fmt.Errorf("error during simplification: %v", err)
+		return resSystem, fmt.Errorf("error during simplification: %v simplifying: %v", err, node.value.String())
 	}
 	return resSystem, nil
 }
@@ -564,6 +564,12 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.
 	for _, v := range chValuesHelpArray {
 		newChvaluesHelp.Append(v)
 	}
+	//fmt.Println(node.value.String())
+	//fmt.Println(node.substitution.String())
+	//fmt.Println(newChvalues)
+	//fmt.Println(newChvaluesHelp)
+	//fmt.Println(metTrueNodeAll)
+
 	var newLetter symbol.Symbol
 	if !node.substitution.IsEmpty() {
 		newLetter = node.NewLetter()
@@ -585,6 +591,9 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.
 			}
 			return newChvalues, equation.NewCharacteristicValues(), cycleToNode, false
 		} else {
+			if node.substitution.IsEmpty() {
+				return newChvalues, newChvaluesHelp, cycleToNode, metTrueNodeAll
+			}
 			if newChvaluesHelp.IsEmpty() {
 				if !node.substitution.IsEmpty() {
 					if metTrueNodeAll {
@@ -597,17 +606,20 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.
 			} else {
 				f1E, f2E := newChvaluesHelp.Compare(newChvalues)
 				if f1E && f2E {
+					// TODO: check is fine
+					n := equation.NewCharacteristicValues()
 					if !node.substitution.IsEmpty() {
-						if metTrueNodeAll {
-							newChvalues.AddToF1Head(newLetter)
-						} else {
-							newChvalues.AddToF2Head(newLetter)
-						}
+						n.AddToF2Head(newLetter)
+						//if metTrueNodeAll {
+						//	newChvalues.AddToF1Head(newLetter)
+						//} else {
+						//	newChvalues.AddToF2Head(newLetter)
+						//}
 					}
 					if node.IsSubgraphRoot() {
 						return newChvalues, equation.NewCharacteristicValues(), cycleToNode, false
 					} else {
-						return equation.NewCharacteristicValues(), newChvalues, cycleToNode, false
+						return n, newChvalues, cycleToNode, false
 					}
 				} else {
 					if !node.substitution.IsEmpty() {

@@ -21,12 +21,8 @@
 */*.dot
 */*.png
 
-input_files/a
-a_1
-input_files/checked
-input_files/checked2
+input_files/
 output_files
 first_track_standard_output
 generated_track1_standard
-info.txt
 *.txt

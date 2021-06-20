@@ -26,7 +26,7 @@ func scanInput(scanner *bufio.Scanner) error {
 	return handleScannerError(scanner)
 }
 
-func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bool, bool, bool, bool, bool) {
+func parseFLags() (bool, string, string, int, bool, string, string, bool, bool, bool, bool, bool, bool, bool, bool) {
 	fullGraph := flag.Bool("full_graph", false, "print full graph")
 	fullSystem := flag.Bool("full_system", false, "solve full system")
 	inputFile := flag.String("input_file", "", "input filename")
@@ -35,6 +35,7 @@ func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bo
 	makePng := flag.Bool("png", false, "create graph png")
 	makeDot := flag.Bool("dot", false, "create dot description")
 	outputDir := flag.String("output_directory", ".", "output directory")
+	infoFile := flag.String("info_file", "", "file with output info")
 	splitByEquidecomposability := flag.Bool("use_eq_split", false, "split equation into system")
 	lengthAnalysis := flag.Bool("use_length_analysis", false, "use length analysis")
 	simplification := flag.Bool("use_simplification", false, "use simplification")
@@ -44,7 +45,7 @@ func parseFLags() (bool, string, string, int, bool, string, bool, bool, bool, bo
 
 	flag.Parse()
 	return *fullGraph, *inputFile, *inputDir, *cycleRange, *makePng,
-		*outputDir, *makeDot, *splitByEquidecomposability, *fullSystem,
+		*outputDir, *infoFile, *makeDot, *splitByEquidecomposability, *fullSystem,
 		*lengthAnalysis, *simplification, *defaultName, *solveSystem, *applying
 }
 
@@ -155,11 +156,11 @@ func process(infoWriter *info_writer.InfoWriter, inputSource *os.File, fullGraph
 
 func main() {
 	matlog.LoggerSetup()
-	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, makeDot,
+	fullGraph, inputFilename, inputDirName, cycleRange, makePng, outputDir, infoFile, makeDot,
 		splitByEquidecomposability, fullSystem, lengthAnalysis, simplification, defaultName, solveSystem, applying := parseFLags()
 
 	var infoWriter info_writer.InfoWriter
-	err := infoWriter.Init()
+	err := infoWriter.Init(infoFile)
 	if err != nil {
 		logger.Errorf("error initing info writer: %v", err)
 	}

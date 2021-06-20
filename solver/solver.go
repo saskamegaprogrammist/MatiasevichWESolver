@@ -108,7 +108,6 @@ func (solver *Solver) init(constantsAlph string, varsAlph string,
 		err = solver.simplifier.Init(constantsAlph, varsAlph, PrintOptions{}, SolveOptions{
 			LengthAnalysis:             false,
 			SplitByEquidecomposability: true,
-			CycleRange:                 50,
 			FullGraph:                  true,
 			FullSystem:                 true,
 			AlgorithmMode:              solver.solveOptions.AlgorithmMode,

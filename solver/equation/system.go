@@ -87,7 +87,7 @@ func (es *EquationsSystem) Reorder() {
 	var eqs = make([]Equation, 0)
 	if es.IsConjunction() {
 		for i, c := range es.compounds {
-			if !c.IsSingleEquation() || c.value.isEquidecomposable || c.value.isRegularlyOrdered {
+			if !c.IsSingleEquation() || c.value.CheckEquidecomposability() || c.value.isRegularlyOrdered {
 				newCompounds[i] = c
 			} else {
 				indexes = append(indexes, i)
