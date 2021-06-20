@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
 const (
 	INFONAME = "info_second_track_standard_2.txt"
+	LOWDASH  = "_"
+	DOT      = "."
 )
 
 type InfoWriter struct {
@@ -57,6 +60,16 @@ func (infoWriter *InfoWriter) WriteTime(time time.Duration) error {
 
 func (infoWriter *InfoWriter) WriteSolution(solution string) error {
 	_, err := infoWriter.writer.WriteString(fmt.Sprintf("solution: %s\n\n", solution))
+	if err != nil {
+		return fmt.Errorf("error wriring to info writer: %v", err)
+	}
+	return nil
+}
+
+func (infoWriter *InfoWriter) WriteNumber(filename string) error {
+	splitted := strings.Split(filename, ".")
+	splitted_new := strings.Split(splitted[0], "_")
+	_, err := infoWriter.writer.WriteString(fmt.Sprintf("number: %s\n", splitted_new[len(splitted_new)-1]))
 	if err != nil {
 		return fmt.Errorf("error wriring to info writer: %v", err)
 	}

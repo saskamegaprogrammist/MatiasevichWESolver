@@ -55,6 +55,10 @@ func process(infoWriter *info_writer.InfoWriter, inputSource *os.File, fullGraph
 	var err error
 	var equations = make([]string, 0)
 	var equation string
+	err = infoWriter.WriteNumber(inputSource.Name())
+	if err != nil {
+		logger.Errorf("error writing to info file: %v", err)
+	}
 	scanner := bufio.NewScanner(inputSource)
 	err = handleScannerError(scanner)
 	if err != nil {
