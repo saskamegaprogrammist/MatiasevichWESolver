@@ -54,8 +54,8 @@ func (ch *CharacteristicValues) Append(chv CharacteristicValues) {
 }
 
 func (ch *CharacteristicValues) Compare(chv CharacteristicValues) (bool, bool) {
-	ch.ReduceEmptyVars()
-	chv.ReduceEmptyVars()
+	*ch = ch.ReduceEmptyVars()
+	chv = chv.ReduceEmptyVars()
 	return standart.CheckSymbolArraysEquality(ch.F1, chv.F1),
 		standart.CheckSymbolArraysEquality(ch.F2, chv.F2)
 }
@@ -74,4 +74,27 @@ func (ch *CharacteristicValues) ReduceEmptyVars() CharacteristicValues {
 		}
 	}
 	return newChv
+}
+
+func (ch *CharacteristicValues) FindSuffics(chv CharacteristicValues) (bool, []symbol.Symbol) {
+	*ch = ch.ReduceEmptyVars()
+	chv = chv.ReduceEmptyVars()
+
+	var currentPart []symbol.Symbol
+	currentPart = append(currentPart, chv.F2...)
+	currentPart = append(currentPart, ch.F1...)
+	currentPart = append(currentPart, ch.F2...)
+
+	chvF2Len := len(chv.F2)
+	lenCurrPart := len(currentPart)
+	i := 0
+	for ; i < chvF2Len; i++ {
+		if chv.F2[chvF2Len-1-i] != currentPart[lenCurrPart-1-i] {
+			break
+		}
+	}
+	if i != chvF2Len {
+		return false, []symbol.Symbol{}
+	}
+	return true, currentPart[:lenCurrPart-i]
 }

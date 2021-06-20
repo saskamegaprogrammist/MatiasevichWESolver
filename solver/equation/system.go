@@ -618,6 +618,24 @@ func CharacteristicEquationRefactored(sym symbol.Symbol, values CharacteristicVa
 	}, nil
 }
 
+func CharacteristicEquationWLeftPart(sym symbol.Symbol, values CharacteristicValues, leftPart []symbol.Symbol) (EquationsSystem, error) {
+	var rightPart []symbol.Symbol
+
+	leftPart = append(leftPart, sym)
+	rightPart = append(rightPart, sym)
+	rightPart = append(rightPart, values.F2...)
+	rightPart = append(rightPart, values.F1...)
+
+	var eq Equation
+	eq.NewFromParts(leftPart, rightPart)
+	eq.FullReduceEmpty()
+	return EquationsSystem{
+		value:      eq,
+		compounds:  nil,
+		systemType: SINGLE_EQUATION,
+	}, nil
+}
+
 func SystemFromValues(leftSym symbol.Symbol, rightPart VariableValues) EquationsSystem {
 	if rightPart.Size() == 1 {
 		var eq Equation

@@ -462,16 +462,34 @@ func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimpl
 						eqType = equation.EQ_TYPE_W_EMPTY
 					}
 				} else {
-					return fmt.Errorf("can't create characteristic equation")
+					foundSuff, preff := f2.FindSuffics(f1)
+					if !foundSuff {
+						return fmt.Errorf("can't create characteristic equation")
+					}
+
+					eqType = equation.EQ_TYPE_W_LEFTPART
+
+					es, err = equation.CharacteristicEquationWLeftPart(sVar, f2, preff)
+
+					if err != nil {
+						return fmt.Errorf("can't create characteristic equation: %v", err)
+
+					}
+					//es.Print()
+					//node.simplified.Print()
+
 				}
 			}
 
-			es, err = equation.CharacteristicEquationRefactored(sVar, f1, eqType)
+			if eqType != equation.EQ_TYPE_W_LEFTPART {
+				es, err = equation.CharacteristicEquationRefactored(sVar, f1, eqType)
 
-			if err != nil {
-				return fmt.Errorf("can't create characteristic equation: %v", err)
+				if err != nil {
+					return fmt.Errorf("can't create characteristic equation: %v", err)
 
+				}
 			}
+
 			//es.Print()
 			//node.simplified.Print()
 

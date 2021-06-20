@@ -9,3 +9,4 @@ var typesMap = map[int]string{EMPTY: "EMPTY", CONJUNCTION: "CONJUNCTION", DISJUN
 
 const EQ_TYPE_SIMPLE int = 1
 const EQ_TYPE_W_EMPTY int = 2
+const EQ_TYPE_W_LEFTPART int = 3

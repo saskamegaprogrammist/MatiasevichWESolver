@@ -113,6 +113,7 @@ func (solver *Solver) init(constantsAlph string, varsAlph string,
 			AlgorithmMode:              solver.solveOptions.AlgorithmMode,
 			SaveLettersSubstitutions:   true,
 			NeedsSimplification:        false,
+			CycleRange:                 100,
 		})
 
 		if err != nil {
@@ -344,23 +345,21 @@ func (solver *Solver) solveEquationTimes(equation equation.Equation, times int) 
 	magicPrefix := strings.Repeat(MAGIC_PREFIX, times)
 	solver.solveOptions.CycleRange += len(magicPrefix)
 	tree := NewTreeWEquation(magicPrefix+"0", equation)
+	defer func() {
+		if solver.printOptions.Dot {
+			err = solver.createGraphDescription(&tree)
+			if err != nil {
+				logger.Errorf("error creating graph desc: %v", err)
+			}
+		}
+	}()
 	err = solver.solveSystem(&tree)
 	if err != nil {
 		return 0, fmt.Errorf("error solving equation: %v", err)
 	}
 	tree.SetWasUnfolded()
 	measuredTime := time.Since(timeStart)
-	//err = solver.simplifier.Simplify(&tree)
-	//if err != nil {
-	//	return measuredTime, fmt.Errorf("error simplifing eq: %v", err)
-	//}
 
-	if solver.printOptions.Dot {
-		err = solver.createGraphDescription(&tree)
-		if err != nil {
-			return measuredTime, fmt.Errorf("error creating graph desc: %v", err)
-		}
-	}
 	return measuredTime, nil
 }
 
@@ -369,6 +368,14 @@ func (solver *Solver) solveEquationsSystem(es equation.EquationsSystem) (time.Du
 	timeStart := time.Now()
 
 	tree := NewTreeWEquationsSystem("0", es)
+	defer func() {
+		if solver.printOptions.Dot {
+			err = solver.createGraphDescription(&tree)
+			if err != nil {
+				logger.Errorf("error creating graph desc: %v", err)
+			}
+		}
+	}()
 	err = solver.solveSystem(&tree)
 	if err != nil {
 		return 0, fmt.Errorf("error solving equations system: %v", err)
@@ -376,12 +383,6 @@ func (solver *Solver) solveEquationsSystem(es equation.EquationsSystem) (time.Du
 	tree.SetWasUnfolded()
 	measuredTime := time.Since(timeStart)
 
-	if solver.printOptions.Dot {
-		err = solver.createGraphDescription(&tree)
-		if err != nil {
-			return measuredTime, fmt.Errorf("error creating graph desc: %v", err)
-		}
-	}
 	return measuredTime, nil
 }
 
