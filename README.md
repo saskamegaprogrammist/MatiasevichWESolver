@@ -31,6 +31,9 @@ Matiasevich word equations solver with words transformations
 - input_file - 
 *string* full path to input file with equation description
 
+- info_file - 
+*string* full path to file with output information
+
 - input_directory - 
 *string* full path to input directory with equation description files
 

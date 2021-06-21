@@ -10,7 +10,13 @@ import (
 	"github.com/saskamegaprogrammist/MatiasevichWESolver/solver"
 	"os"
 	"sort"
+	"time"
 )
+
+type Answer struct {
+	hasSolution string
+	time        time.Duration
+}
 
 func handleScannerError(scanner *bufio.Scanner) error {
 	var scannerErr error
@@ -136,20 +142,36 @@ func process(infoWriter *info_writer.InfoWriter, inputSource *os.File, fullGraph
 		logger.Errorf("error writing to info file: %v", err)
 	}
 
-	hasSolution, measuredTime, err := eqSolver.Solve()
-	if err != nil {
-		logger.Errorf("error writing graph: %v", err)
-	}
-	fmt.Printf("took time: %v \ngot solution: %s \n\n", measuredTime, hasSolution)
+	channel := make(chan Answer, 1)
+	go func() {
+		hasSolution, measuredTime, err := eqSolver.Solve()
+		if err != nil {
+			logger.Errorf("error writing graph: %v", err)
+		}
+		channel <- Answer{hasSolution, measuredTime}
+	}()
 
-	err = infoWriter.WriteTime(measuredTime)
-	if err != nil {
-		logger.Errorf("error writing to info file: %v", err)
-	}
+	select {
+	case res := <-channel:
 
-	err = infoWriter.WriteSolution(hasSolution)
-	if err != nil {
-		logger.Errorf("error writing to info file: %v", err)
+		fmt.Printf("took time: %v \ngot solution: %s \n\n", res.time, res.hasSolution)
+
+		err = infoWriter.WriteTime(res.time)
+		if err != nil {
+			logger.Errorf("error writing to info file: %v", err)
+		}
+
+		err = infoWriter.WriteSolution(res.hasSolution)
+		if err != nil {
+			logger.Errorf("error writing to info file: %v", err)
+		}
+
+	case <-time.After(240 * time.Second):
+		fmt.Printf("timeout\n\n")
+		err = infoWriter.Write("timeout\n\n")
+		if err != nil {
+			logger.Errorf("error writing to info file: %v", err)
+		}
 	}
 
 	err = infoWriter.Flush()

@@ -52,6 +52,8 @@ func (infoWriter *InfoWriter) WriteFormat(mode string) error {
 
 func (infoWriter *InfoWriter) WriteTime(time time.Duration) error {
 	_, err := infoWriter.writer.WriteString(fmt.Sprintf("took time: %v\n", time))
+	//_, err := infoWriter.writer.WriteString(fmt.Sprintf("%v\n", time))
+
 	if err != nil {
 		return fmt.Errorf("error wriring to info writer: %v", err)
 	}
@@ -60,6 +62,7 @@ func (infoWriter *InfoWriter) WriteTime(time time.Duration) error {
 
 func (infoWriter *InfoWriter) WriteSolution(solution string) error {
 	_, err := infoWriter.writer.WriteString(fmt.Sprintf("solution: %s\n\n", solution))
+	//_, err := infoWriter.writer.WriteString(fmt.Sprintf("%s\n", solution))
 	if err != nil {
 		return fmt.Errorf("error wriring to info writer: %v", err)
 	}
