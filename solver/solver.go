@@ -20,11 +20,10 @@ const EMPTY = ""
 const LOWDASH = "_"
 
 type Solver struct {
-	algorithmType int64
-	constantsAlph equation.Alphabet
-	varsAlph      equation.Alphabet
-	wordsAlph     equation.Alphabet
-	//equation      equation.Equation
+	algorithmType   int64
+	constantsAlph   equation.Alphabet
+	varsAlph        equation.Alphabet
+	wordsAlph       equation.Alphabet
 	equationsSystem equation.EquationsSystem
 	hasSolution     bool
 	cycled          bool
@@ -72,7 +71,6 @@ func (solver *Solver) InitWithSystem(constantsAlph string, varsAlph string, equa
 		if err != nil {
 			return fmt.Errorf("error parsing equation: %v", err)
 		}
-		//eq.Print()
 		equationsParsed = append(equationsParsed, eq)
 	}
 	eqSystem := equation.NewConjunctionSystemFromEquations(equationsParsed)
@@ -419,7 +417,6 @@ func (solver *Solver) createFalseNode(node *Node, falseType int) {
 	}
 	node.infoChild = falseNode
 	node.SetHasFalseChildren()
-	//fmt.Println("___FALSE")
 }
 
 func (solver *Solver) createTrueNode(node *Node) {
@@ -429,8 +426,6 @@ func (solver *Solver) createTrueNode(node *Node) {
 	node.SetHasTrueChildren()
 	node.infoChild = trueNode
 	solver.hasSolution = true
-	//fmt.Println("TRUE")
-	//fmt.Println(node.number)
 }
 
 func newEquationSystemWithSubstitution(oldNode *Node, substitution *equation.Substitution, number string) Node {
@@ -463,7 +458,6 @@ func (solver *Solver) simplifyNode(node *Node) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error simplifying: %v", err)
 	}
-	//tree.simplified.Print()
 	if !tree.HasTrueChildren() {
 		solver.createFalseNode(node, REGULAR_FALSE)
 		return true, nil
@@ -545,7 +539,6 @@ func (solver *Solver) solveSystem(node *Node) error {
 		}
 	}
 
-	//fmt.Println(node.number)
 	var isUnequal bool
 	isUnequal, err = checkInequality(node)
 	if err != nil {
@@ -595,7 +588,6 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 	if solver.solveOptions.ApplyEquations {
 		nodeValue = node.value
-		//nodeValue.Print()
 		applied, err := nodeValue.Apply()
 		if err != nil {
 			return fmt.Errorf("error during applying system: %v", err)
@@ -619,7 +611,6 @@ func (solver *Solver) solveSystem(node *Node) error {
 
 		if !simplified {
 			firstEquation := node.value.Equation()
-			//firstEquation.Print()
 
 			if solver.algorithmType == FINITE {
 				if checkFirstRuleFinite(firstEquation) {
@@ -720,11 +711,6 @@ func (solver *Solver) solveSystem(node *Node) error {
 		}
 	}
 
-	//node.Print()
-	//for i, child := range node.children {
-	//	fmt.Printf(" %d  :", i)
-	//	child.Print()
-	//}
 	if len(node.children) == 0 {
 		solver.createFalseNode(node, REGULAR_FALSE)
 		return nil
@@ -756,10 +742,6 @@ func (solver *Solver) solveSystem(node *Node) error {
 			}
 		}
 	}
-
-	//node.Print()
-	//fmt.Println(node.childrenSubstituteVars)
-	//fmt.Println(node.subgraphsSubstituteVars)
 
 	return nil
 }

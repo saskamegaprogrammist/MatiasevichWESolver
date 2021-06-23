@@ -50,13 +50,11 @@ func (s *Simplifier) Simplify(node *Node) error {
 				return fmt.Errorf("error simplifying node with letters: %v", err)
 			}
 			newNode.simplified = nodeSystem
-			//nodeSystem.Print()
 
 			conjunctions = append(conjunctions, equation.NewConjunctionSystemFromEquations(append(eqs[i], nodeSystem.GetEquations()...)))
 		}
 		resSystem = equation.NewDisjunctionSystem(conjunctions)
 		node.simplified = resSystem
-		//resSystem.Print()
 	} else {
 		var resSystem equation.EquationsSystem
 		resSystem, err = s.simplifyNode(node)
@@ -64,7 +62,6 @@ func (s *Simplifier) Simplify(node *Node) error {
 			return fmt.Errorf("error simplifying node without letters: %v", err)
 		}
 		node.simplified = resSystem
-		//resSystem.Print()
 	}
 	return nil
 }
@@ -271,15 +268,11 @@ func (s *Simplifier) simplify(node *Node, symbolVar symbol.Symbol, hasAlreadyBee
 	}
 	disjunctions := getAllDisjunctionsFromPairs(eqSystemsPairs)
 	ds := equation.NewDisjunctionSystem(disjunctions)
-	//ds.Print()
 	ds.Simplify()
 	ds.RemoveEqual()
-	//ds.Print()
 	newGraphs := make([]Node, 0)
 	var varMap = make(map[symbol.Symbol]bool)
 	for _, disj := range ds.Compounds() {
-		//disj.Print()
-		//fmt.Println()
 		newGraph := Node{}
 		err = copyGraph(node, &newGraph, disj, symbolVar)
 		if err != nil {
@@ -417,7 +410,6 @@ func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimpl
 		if sVar != subgraphSymbol {
 			return nil
 		}
-		//node.Print()
 
 		nodeToWalk := node
 		for len(nodeToWalk.children) == 1 && nodeToWalk.children[0].substitution.IsEmpty() {
@@ -439,15 +431,12 @@ func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimpl
 			values.ReduceEmptyVars()
 
 			es = equation.SystemFromValues(sVar, values)
-			//node.simplified.Print()
 
 		} else {
 
 			nodeToWalk.SetIsSubgraphRoot()
 
 			f1, f2, _, _ := s.walkWithSymbolBackCycledRefactored(nodeToWalk, sVar)
-			//fmt.Println(f1)
-			//fmt.Println(f2)
 
 			var eqType int = equation.EQ_TYPE_SIMPLE
 
@@ -475,9 +464,6 @@ func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimpl
 						return fmt.Errorf("can't create characteristic equation: %v", err)
 
 					}
-					//es.Print()
-					//node.simplified.Print()
-
 				}
 			}
 
@@ -489,9 +475,6 @@ func (s *Simplifier) walk(node *Node, subgraphSymbol symbol.Symbol, alreadySimpl
 
 				}
 			}
-
-			//es.Print()
-			//node.simplified.Print()
 
 			nodeToWalk.UnsetIsSubgraphRoot()
 		}
@@ -562,9 +545,6 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.
 			continue
 		}
 		chValuesMain, chValuesHelp, currParentNode, metTrueNode := s.walkWithSymbolBackCycledRefactored(ch, sVar)
-		//ch.Print()
-		//fmt.Println(chValuesMain)
-		//fmt.Println(chValuesHelp)
 		chValuesMainArray = append(chValuesMainArray, chValuesMain)
 		chValuesHelpArray = append(chValuesHelpArray, chValuesHelp)
 		if currParentNode != nil {
@@ -582,11 +562,6 @@ func (s *Simplifier) walkWithSymbolBackCycledRefactored(node *Node, sVar symbol.
 	for _, v := range chValuesHelpArray {
 		newChvaluesHelp.Append(v)
 	}
-	//fmt.Println(node.value.String())
-	//fmt.Println(node.substitution.String())
-	//fmt.Println(newChvalues)
-	//fmt.Println(newChvaluesHelp)
-	//fmt.Println(metTrueNodeAll)
 
 	var newLetter symbol.Symbol
 	if !node.substitution.IsEmpty() {

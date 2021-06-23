@@ -160,8 +160,6 @@ func (equation *Equation) NewFromParts(leftPart []symbol.Symbol, rightPart []sym
 }
 
 func (equation *Equation) Init(eq string, constAlphabet *Alphabet, varsAlphabet *Alphabet) error {
-	//fmt.Println(constAlphabet.words)
-	//fmt.Print(varsAlphabet.words)
 	var err error
 	isEq, i := checkEquation(eq)
 	if !isEq {
@@ -324,7 +322,6 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 		}
 		nextWordLen := len(currentWord) + 1
 		continueSearch = (nextWordLen <= varsAlphabet.maxWordLength || nextWordLen <= constAlphabet.maxWordLength) && eqLen != i+1
-		//fmt.Println(nextWordLen, varsAlphabet.maxWordLength, constAlphabet.maxWordLength, continueSearch)
 		if match {
 			lastMatchedWord = currentWord
 			lastMatchType = matchType
@@ -369,13 +366,11 @@ func matchWithAlphabets(eqPart string, constAlphabet *Alphabet, varsAlphabet *Al
 			}
 		}
 	}
-	//fmt.Print(symbols)
 	return symbols, nil
 }
 
 func (equation *Equation) CheckInequality() (bool, error) {
 	var err error
-	//equation.Print()
 	if equation.IsRightEmpty() {
 		if equation.LeftPart.Length > 0 {
 			for _, sym := range equation.LeftPart.Symbols {
